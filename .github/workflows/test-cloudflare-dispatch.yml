@@ -1,0 +1,14 @@
+name: Validar disparo do Cloudflare
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Confirmar disparo
+        run: echo "Disparo do Cloudflare confirmado."
