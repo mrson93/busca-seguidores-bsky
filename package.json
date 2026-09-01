@@ -1,0 +1,28 @@
+{
+  "name": "busca-seguidores-bsky",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node test-boot.mjs",
+    "test:auto-follow": "node test-auto-follow.mjs",
+    "test:auto-unfollow": "node test-auto-unfollow.mjs",
+    "auto-follow:dry-run": "node auto-follow.mjs",
+    "auto-follow": "node auto-follow.mjs --execute",
+    "auto-unfollow:dry-run": "node auto-unfollow.mjs",
+    "auto-unfollow": "node auto-unfollow.mjs --execute",
+    "cloudflare:deploy": "wrangler deploy",
+    "cloudflare:types": "wrangler types",
+    "test:browser": "node test-browser.mjs",
+    "test:scheduler": "vitest run cloudflare-scheduler",
+    "typecheck:scheduler": "tsc -p cloudflare-scheduler/tsconfig.json",
+    "prepare:publish": "node prepare-publish.mjs"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260829.1",
+    "@types/node": "^26.4.0",
+    "playwright": "^1.62.1",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.11",
+    "wrangler": "^4.127.1"
+  }
+}

@@ -1,0 +1,27 @@
+# NUNCA versionar nem publicar: contém app passwords em texto puro
+config.js
+
+# histórico local da automação, sem credenciais
+auto-follow-history.jsonl
+auto-unfollow-history.jsonl
+.auto-follow-state.json
+
+# gerado pelo test-boot.mjs
+boot.mjs
+
+# fora do repositorio publico, continua na pasta local
+script.txt
+
+# configuracoes locais de assistentes e permissoes da maquina
+.DS_Store
+.claude/
+
+# pacote limpo gerado por prepare-publish.mjs
+dist/
+
+# dependencias opcionais do teste em navegador
+node_modules/
+
+# estado e segredos locais do Cloudflare Wrangler
+.wrangler/
+.dev.vars

@@ -1,0 +1,30 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "busca-seguidores-bsky-scheduler",
+  "main": "cloudflare-scheduler/src/index.ts",
+  "compatibility_date": "2026-08-30",
+  "compatibility_flags": ["nodejs_compat"],
+  "triggers": {
+    "crons": ["17 * * * *"]
+  },
+  "vars": {
+    "GITHUB_OWNER": "mrson93",
+    "GITHUB_REPOSITORY": "busca-seguidores-bsky",
+    "GITHUB_WORKFLOW": "auto-follow.yml",
+    "GITHUB_REF": "main"
+  },
+  "secrets": {
+    "required": ["GITHUB_TOKEN"]
+  },
+  "observability": {
+    "enabled": true,
+    "logs": {
+      "enabled": true,
+      "head_sampling_rate": 1
+    },
+    "traces": {
+      "enabled": true,
+      "head_sampling_rate": 1
+    }
+  }
+}
