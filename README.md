@@ -27,9 +27,10 @@ ao início da janela de 60 minutos, com um teto de segurança de 20 páginas.
 
 Antes de seguir, a automação verifica os rótulos `porn`, `sexual` e `nudity` no perfil
 e nos 50 posts recentes. Também rejeita bios e posts com divulgação adulta explícita,
-como `NSFW`, `🔞`, nudez e links de plataformas adultas. Se essa verificação falhar,
-o perfil não é seguido. O filtro reduz bastante o risco, mas depende dos rótulos e dos
-textos publicados e, portanto, não garante detectar conteúdo adulto ainda não rotulado.
+como `NSFW`, `🔞`, nudez e links de plataformas adultas, além de perfis com sinal forte
+de outro país. Se a verificação falhar, o perfil não é seguido. O filtro reduz bastante
+o risco, mas depende dos rótulos, textos e sinais públicos e, portanto, não garante
+detectar conteúdo adulto ainda não rotulado nem determinar toda nacionalidade.
 
 Primeiro rode em simulação, que não segue ninguém:
 
@@ -58,15 +59,26 @@ restrito a este repositório e à permissão de Actions. O handle e a app passwo
 `BSKY_HANDLE` e `BSKY_APP_PASSWORD` do GitHub. Nenhuma credencial fica no repositório
 ou nos arquivos publicados pelo GitHub Pages, e as execuções não podem se sobrepor.
 
-Na mesma execução, `auto-unfollow.mjs` remove no máximo 50 perfis que não seguem a
-conta de volta. Só entram perfis seguidos há pelo menos 7 dias, sempre do follow mais
-antigo em direção ao mais recente. Quando há registros de follow duplicados para a
-mesma pessoa, todos são removidos na mesma passagem. O perfil só é contabilizado e
-gravado no histórico depois que a API confirma que ele deixou de ser seguido. Um estado
-persistente no cache do Actions impede que o follow automático volte a adicionar quem
-acabou de ser removido. O estado contém somente DIDs, handles e datas — nunca tokens ou
-app passwords. Os logs públicos do Actions mostram somente contagens agregadas; handles
-e DIDs processados não são publicados.
+Na mesma execução, `auto-unfollow.mjs` remove no máximo 50 perfis, sempre do follow mais
+antigo em direção ao mais recente. Entram três motivos independentes: não seguir a conta
+de volta após 7 dias, conteúdo adulto ou sinal forte de que o perfil não é brasileiro.
+Os dois últimos não têm prazo de carência e também valem para quem segue de volta.
+
+Como o Bluesky não fornece nacionalidade, a classificação é conservadora: usa sinais
+explícitos no perfil, domínio e idioma regional dos posts, como `🇵🇹`, Portugal, `.pt` ou
+`pt-PT`. Um sinal brasileiro, como `🇧🇷`, Brasil, `.br` ou `pt-BR`, tem prioridade. Perfis
+sem evidência suficiente ficam como desconhecidos e são mantidos. A cada rodada são
+revisados até 100 follows ainda não avaliados, começando pelos mais antigos; perfis
+mantidos voltam a ser verificados após 30 dias. Esses limites podem ser ajustados com
+`AUTO_UNFOLLOW_POLICY_SCAN_LIMIT` e `AUTO_UNFOLLOW_POLICY_REVIEW_DAYS`.
+
+Quando há registros de follow duplicados para a mesma pessoa, todos são removidos na
+mesma passagem. O perfil só é contabilizado e gravado no histórico depois que a API
+confirma que ele deixou de ser seguido. Um estado persistente no cache do Actions impede
+que o follow automático volte a adicionar quem acabou de ser removido e registra o
+progresso da revisão. O estado contém somente DIDs, handles, datas e classificações —
+nunca tokens ou app passwords. Os logs públicos do Actions mostram somente contagens
+agregadas; handles e DIDs processados não são publicados.
 
 ## Rodar localmente
 

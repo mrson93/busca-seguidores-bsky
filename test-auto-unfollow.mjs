@@ -46,6 +46,7 @@ const mock = ({ keepDeleted = false } = {}) => {
         };
       }),
     });
+    if (path === 'app.bsky.feed.getAuthorFeed') return ok({ feed: [] });
     if (path === 'com.atproto.repo.deleteRecord') {
       const index = records.findIndex(record => record.uri.endsWith('/' + body.rkey));
       if (!keepDeleted && index >= 0) records.splice(index, 1);
@@ -110,6 +111,71 @@ try {
     const state = JSON.parse(await readFile(statePath, 'utf8'));
     assert.equal(state.unfollowed['did:plc:oldest'], undefined);
     console.log('ok 3 - nao contabiliza nem persiste enquanto o perfil continuar seguido');
+  }
+
+  {
+    const calls = [];
+    const records = ['adult', 'portugal', 'brasil', 'unknown'].map((name, index) => ({
+      uri: `at://did:plc:me/app.bsky.graph.follow/${name}`,
+      value: {
+        subject: `did:plc:${name}`,
+        createdAt: `2026-08-${String(26 + index).padStart(2, '0')}T10:00:00Z`,
+      },
+    }));
+    const profileData = {
+      'did:plc:adult': { labels: [{ val: 'porn' }] },
+      'did:plc:portugal': { description: 'Lisboa, Portugal 🇵🇹' },
+      'did:plc:brasil': { description: 'Brasileira 🇧🇷' },
+      'did:plc:unknown': { description: 'Escrevo em português' },
+    };
+    const fetchFn = async (input, options = {}) => {
+      const url = new URL(input);
+      const path = url.pathname.split('/').pop();
+      const body = options.body ? JSON.parse(options.body) : undefined;
+      calls.push({ path, url, body });
+      const ok = data => new Response(JSON.stringify(data), { status: 200 });
+      if (path === 'com.atproto.server.createSession')
+        return ok({ did: 'did:plc:me', handle: 'eu.bsky.social', accessJwt: 'token' });
+      if (path === 'com.atproto.repo.listRecords') return ok({ records });
+      if (path === 'app.bsky.actor.getProfiles') return ok({
+        profiles: url.searchParams.getAll('actors').map(did => {
+          const record = records.find(item => item.value.subject === did);
+          return {
+            did,
+            handle: did.split(':').pop() + '.bsky.social',
+            ...profileData[did],
+            viewer: {
+              ...(record && { following: record.uri }),
+              followedBy: `at://${did}/app.bsky.graph.follow/me`,
+            },
+          };
+        }),
+      });
+      if (path === 'app.bsky.feed.getAuthorFeed') return ok({ feed: [] });
+      if (path === 'com.atproto.repo.deleteRecord') {
+        const index = records.findIndex(record => record.uri.endsWith('/' + body.rkey));
+        if (index >= 0) records.splice(index, 1);
+        return ok({});
+      }
+      return new Response('{}', { status: 404 });
+    };
+    const statePath = join(directory, 'policy-state.json');
+    const result = await runUnfollow({
+      account, now, fetchFn, execute: true, policyScanLimit: 10,
+      sleepFn: async () => {}, recordHistory: false, statePath,
+    });
+    assert.deepEqual(result.unfollowed.map(item => item.handle),
+      ['adult.bsky.social', 'portugal.bsky.social']);
+    assert.deepEqual(result.unfollowed.map(item => item.reasons),
+      [['adult_content'], ['non_brazilian']]);
+    assert.equal(result.adultProfilesDetected, 1);
+    assert.equal(result.nonBrazilianProfilesDetected, 1);
+    assert.equal(result.policyFailures.length, 0);
+    const state = JSON.parse(await readFile(statePath, 'utf8'));
+    assert.deepEqual(state.unfollowed['did:plc:adult'].reasons, ['adult_content']);
+    assert.equal(state.reviewed['did:plc:brasil'].nationality, 'brazilian');
+    assert.equal(state.reviewed['did:plc:unknown'].nationality, 'unknown');
+    console.log('ok 4 - remove adultos e nao brasileiros, preservando brasileiros e desconhecidos');
   }
 } finally {
   await rm(directory, { recursive: true, force: true });

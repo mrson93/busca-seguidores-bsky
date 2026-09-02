@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { detectAdultContent, dentroDaProporcao, runAutomation } from './auto-follow.mjs';
+import { detectBrazilianProfile } from './profile-policy.mjs';
 
 assert.equal(dentroDaProporcao(80, 100, 20), true);
 assert.equal(dentroDaProporcao(120, 100, 20), true);
@@ -173,6 +174,18 @@ const paginationMock = ({ endless = false } = {}) => {
 }
 
 {
+  assert.equal(detectBrazilianProfile({ description: 'Brasileira 🇧🇷' }).status, 'brazilian');
+  assert.equal(detectBrazilianProfile({ description: 'Lisboa, Portugal 🇵🇹' }).status, 'non_brazilian');
+  assert.equal(detectBrazilianProfile({}, [{ post: { record: { langs: ['pt-BR'] } } }]).status,
+    'brazilian');
+  assert.equal(detectBrazilianProfile({}, [{ post: { record: { langs: ['pt-PT'] } } }]).status,
+    'non_brazilian');
+  assert.equal(detectBrazilianProfile({ description: 'Escrevo em português' }).status, 'unknown');
+  assert.equal(detectBrazilianProfile({ description: 'Brasil e Portugal 🇧🇷 🇵🇹' }).status, 'brazilian');
+  console.log('ok 8 - classifica nacionalidade apenas com sinais fortes e preserva desconhecidos');
+}
+
+{
   const calls = [];
   const adultProfiles = {
     'did:plc:label': {
@@ -185,6 +198,10 @@ const paginationMock = ({ endless = false } = {}) => {
     },
     'did:plc:feed': {
       did: 'did:plc:feed', handle: 'feed.bsky.social', followersCount: 100, followsCount: 100, viewer: {},
+    },
+    'did:plc:portugal': {
+      did: 'did:plc:portugal', handle: 'portugal.bsky.social', followersCount: 100, followsCount: 100,
+      viewer: {}, description: 'Lisboa, Portugal 🇵🇹',
     },
     'did:plc:clean': {
       did: 'did:plc:clean', handle: 'clean.bsky.social', followersCount: 100, followsCount: 100, viewer: {},
@@ -220,9 +237,10 @@ const paginationMock = ({ endless = false } = {}) => {
   });
   assert.deepEqual(result.followed.map(item => item.handle), ['clean.bsky.social']);
   assert.equal(result.adultProfilesSkipped.length, 3);
-  assert.equal(result.profilesCheckedForAdultContent, 4);
+  assert.equal(result.nonBrazilianProfilesSkipped.length, 1);
+  assert.equal(result.profilesCheckedForAdultContent, 5);
   assert.equal(calls.filter(call => call.path === 'com.atproto.repo.createRecord').length, 1);
-  console.log('ok 8 - ignora perfis adultos e continua procurando ate preencher o limite');
+  console.log('ok 9 - ignora adultos e nao brasileiros ate encontrar um perfil elegivel');
 }
 
 {
@@ -241,7 +259,7 @@ const paginationMock = ({ endless = false } = {}) => {
   assert.equal(result.followed.length, 0);
   assert.equal(result.adultCheckFailures.length, 1);
   assert.equal(api.calls.some(call => call.path === 'com.atproto.repo.createRecord'), false);
-  console.log('ok 9 - falha de verificacao impede follow por seguranca');
+  console.log('ok 10 - falha de verificacao impede follow por seguranca');
 }
 
 console.log('\ntodos passaram');

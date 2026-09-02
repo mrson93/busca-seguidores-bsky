@@ -2,12 +2,19 @@ import { appendFile, readFile, rename, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadAccounts } from './auto-follow.mjs';
+import { detectAdultContent, detectBrazilianProfile } from './profile-policy.mjs';
 
 const HOST = 'https://bsky.social/xrpc/';
 const ROOT = fileURLToPath(new URL('.', import.meta.url));
 const STATE = resolve(ROOT, '.auto-follow-state.json');
 const HISTORY = resolve(ROOT, 'auto-unfollow-history.jsonl');
-const DEFAULTS = { graceDays: 7, maxUnfollows: 50, maxPages: 300 };
+const DEFAULTS = {
+  graceDays: 7,
+  maxUnfollows: 50,
+  maxPages: 300,
+  policyScanLimit: 100,
+  policyReviewDays: 30,
+};
 const WAIT = { min: 10000, max: 30000 };
 const VERIFY = { attempts: 3, wait: 1000 };
 
@@ -95,6 +102,23 @@ async function hydrateProfiles(fetchFn, token, records) {
   return profiles;
 }
 
+async function inspectProfilePolicy(fetchFn, token, profile) {
+  const adultFromProfile = detectAdultContent(profile);
+  const nationalityFromProfile = detectBrazilianProfile(profile);
+  if (adultFromProfile.adult || nationalityFromProfile.status === 'non_brazilian') {
+    return { adult: adultFromProfile, nationality: nationalityFromProfile };
+  }
+  const data = await requestJson(fetchFn, 'app.bsky.feed.getAuthorFeed', {
+    token,
+    params: { actor: profile.did, limit: 50, filter: 'posts_no_replies' },
+  });
+  const feed = data.feed ?? [];
+  return {
+    adult: detectAdultContent(profile, feed),
+    nationality: detectBrazilianProfile(profile, feed),
+  };
+}
+
 const unfollow = (fetchFn, session, uri) => requestJson(fetchFn, 'com.atproto.repo.deleteRecord', {
   token: session.accessJwt,
   body: {
@@ -122,9 +146,9 @@ const delay = milliseconds => new Promise(resolvePromise => setTimeout(resolvePr
 async function loadState(statePath) {
   try {
     const state = JSON.parse(await readFile(statePath, 'utf8'));
-    return { version: 1, unfollowed: state.unfollowed ?? {} };
+    return { version: 2, unfollowed: state.unfollowed ?? {}, reviewed: state.reviewed ?? {} };
   } catch (error) {
-    if (error.code === 'ENOENT') return { version: 1, unfollowed: {} };
+    if (error.code === 'ENOENT') return { version: 2, unfollowed: {}, reviewed: {} };
     throw new Error(`Estado de unfollow inválido: ${error.message}`);
   }
 }
@@ -141,6 +165,8 @@ export async function runUnfollow({
   graceDays = DEFAULTS.graceDays,
   maxUnfollows = DEFAULTS.maxUnfollows,
   maxPages = DEFAULTS.maxPages,
+  policyScanLimit = DEFAULTS.policyScanLimit,
+  policyReviewDays = DEFAULTS.policyReviewDays,
   now = new Date(),
   fetchFn = fetch,
   sleepFn = delay,
@@ -154,20 +180,74 @@ export async function runUnfollow({
   graceDays = positive(graceDays, DEFAULTS.graceDays);
   maxUnfollows = Math.min(50, Math.floor(positive(maxUnfollows, DEFAULTS.maxUnfollows)));
   maxPages = Math.floor(positive(maxPages, DEFAULTS.maxPages));
+  policyScanLimit = Math.min(500, Math.floor(positive(policyScanLimit, DEFAULTS.policyScanLimit)));
+  policyReviewDays = positive(policyReviewDays, DEFAULTS.policyReviewDays);
 
   const session = await login(fetchFn, account);
   const follows = await followRecords(fetchFn, session, maxPages);
   const profiles = await hydrateProfiles(fetchFn, session.accessJwt, follows.records);
   const cutoff = new Date(now.getTime() - graceDays * 86400000).toISOString();
-  const candidates = profiles
+  const orderedProfiles = profiles
     .filter(profile => profile.did !== session.did)
     .filter(profile => profile.viewer?.following)
+    .sort((a, b) => a.followedAt.localeCompare(b.followedAt));
+  const noFollowBackCandidates = orderedProfiles
     .filter(profile => !profile.viewer?.followedBy)
-    .filter(profile => profile.followedAt <= cutoff)
+    .filter(profile => profile.followedAt <= cutoff);
+
+  const state = await loadState(statePath);
+  const noFollowBackDids = new Set(noFollowBackCandidates.map(profile => profile.did));
+  const reviewCutoff = new Date(now.getTime() - policyReviewDays * 86400000).toISOString();
+  const profilesToReview = orderedProfiles
+    .filter(profile => !noFollowBackDids.has(profile.did))
+    .filter(profile => !state.reviewed[profile.did]?.at || state.reviewed[profile.did].at <= reviewCutoff)
+    .slice(0, policyScanLimit);
+  const policyReviews = [];
+  const policyFailures = [];
+  for (const profile of profilesToReview) {
+    try {
+      const inspection = await inspectProfilePolicy(fetchFn, session.accessJwt, profile);
+      const reasons = [];
+      if (inspection.adult.adult) reasons.push('adult_content');
+      if (inspection.nationality.status === 'non_brazilian') reasons.push('non_brazilian');
+      policyReviews.push({
+        did: profile.did,
+        handle: profile.handle,
+        followedAt: profile.followedAt,
+        reasons,
+        adultLabels: inspection.adult.labels,
+        explicitAdultText: inspection.adult.explicitText,
+        nationalitySignals: inspection.nationality.reasons,
+      });
+      if (execute && reasons.length === 0) {
+        state.reviewed[profile.did] = {
+          handle: profile.handle,
+          at: now.toISOString(),
+          nationality: inspection.nationality.status,
+        };
+      }
+    } catch (error) {
+      policyFailures.push({ did: profile.did, handle: profile.handle, error: error.message });
+    }
+  }
+
+  const candidatesByDid = new Map(noFollowBackCandidates.map(profile => [profile.did, {
+    ...profile,
+    reasons: ['not_following_back'],
+  }]));
+  for (const review of policyReviews.filter(item => item.reasons.length)) {
+    const profile = orderedProfiles.find(item => item.did === review.did);
+    const previous = candidatesByDid.get(review.did);
+    candidatesByDid.set(review.did, {
+      ...profile,
+      reasons: [...new Set([...(previous?.reasons ?? []), ...review.reasons])],
+    });
+  }
+  const candidates = [...candidatesByDid.values()]
     .sort((a, b) => a.followedAt.localeCompare(b.followedAt))
     .slice(0, maxUnfollows);
 
-  const state = await loadState(statePath);
+  if (execute) await saveState(statePath, state);
   const unfollowed = [];
   const failures = [];
   let recordsDeleted = 0;
@@ -192,16 +272,23 @@ export async function runUnfollow({
           did: profile.did,
           handle: profile.handle,
           followedAt: profile.followedAt,
+          reasons: profile.reasons,
           recordsDeleted: profileRecordsDeleted,
           recordDeleteFailures: deleteErrors.length,
         };
         unfollowed.push(item);
-        state.unfollowed[profile.did] = { handle: profile.handle, at: now.toISOString() };
+        state.unfollowed[profile.did] = {
+          handle: profile.handle,
+          at: now.toISOString(),
+          reasons: profile.reasons,
+        };
+        delete state.reviewed[profile.did];
         await saveState(statePath, state);
       } catch (error) {
         failures.push({
           did: profile.did,
           handle: profile.handle,
+          reasons: profile.reasons,
           recordsDeleted: profileRecordsDeleted,
           recordDeleteFailures: deleteErrors.length,
           error: [...deleteErrors, error.message].join('; '),
@@ -221,11 +308,18 @@ export async function runUnfollow({
     mode: execute ? 'execute' : 'dry-run',
     graceDays,
     maxUnfollows,
+    policyScanLimit,
+    policyReviewDays,
     followsRead: follows.records.length,
     followRecordsRead: follows.recordsRead,
     duplicateFollowRecords: follows.duplicateRecords,
-    candidates: candidates.map(({ did, handle, followedAt, uris }) =>
-      ({ did, handle, followedAt, followRecords: new Set(uris).size })),
+    policyProfilesChecked: profilesToReview.length,
+    policyReviews,
+    policyFailures,
+    adultProfilesDetected: policyReviews.filter(item => item.reasons.includes('adult_content')).length,
+    nonBrazilianProfilesDetected: policyReviews.filter(item => item.reasons.includes('non_brazilian')).length,
+    candidates: candidates.map(({ did, handle, followedAt, uris, reasons }) =>
+      ({ did, handle, followedAt, reasons, followRecords: new Set(uris).size })),
     recordsDeleted,
     recordDeleteFailures,
     unfollowed,
@@ -252,10 +346,21 @@ async function main() {
     execute: process.argv.includes('--execute'),
     graceDays: process.env.AUTO_UNFOLLOW_GRACE_DAYS,
     maxUnfollows: process.env.AUTO_UNFOLLOW_MAX,
+    policyScanLimit: process.env.AUTO_UNFOLLOW_POLICY_SCAN_LIMIT,
+    policyReviewDays: process.env.AUTO_UNFOLLOW_POLICY_REVIEW_DAYS,
   });
-  const { account: _account, candidates, unfollowed, failures, ...metrics } = summary;
+  const {
+    account: _account,
+    candidates,
+    unfollowed,
+    failures,
+    policyReviews,
+    policyFailures,
+    ...metrics
+  } = summary;
   console.log(JSON.stringify({
     ...metrics,
+    policyCheckFailuresCount: policyFailures.length,
     candidatesCount: candidates.length,
     unfollowedCount: unfollowed.length,
     failuresCount: failures.length,
