@@ -9,7 +9,7 @@ const ROOT = fileURLToPath(new URL('.', import.meta.url));
 const STATE = resolve(ROOT, '.auto-follow-state.json');
 const HISTORY = resolve(ROOT, 'auto-unfollow-history.jsonl');
 const DEFAULTS = {
-  graceDays: 7,
+  graceDays: 0,
   maxUnfollows: 50,
   maxPages: 300,
   policyScanLimit: 100,
@@ -21,6 +21,11 @@ const VERIFY = { attempts: 3, wait: 1000 };
 const positive = (value, fallback) => {
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+};
+
+const nonNegative = (value, fallback) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
 };
 
 const requestJson = async (fetchFn, path, { params, body, token } = {}) => {
@@ -177,7 +182,7 @@ export async function runUnfollow({
 } = {}) {
   if (!account?.handle || !account?.appPassword)
     throw new Error('Conta sem handle ou app password.');
-  graceDays = positive(graceDays, DEFAULTS.graceDays);
+  graceDays = nonNegative(graceDays, DEFAULTS.graceDays);
   maxUnfollows = Math.min(50, Math.floor(positive(maxUnfollows, DEFAULTS.maxUnfollows)));
   maxPages = Math.floor(positive(maxPages, DEFAULTS.maxPages));
   policyScanLimit = Math.min(500, Math.floor(positive(policyScanLimit, DEFAULTS.policyScanLimit)));
@@ -194,6 +199,12 @@ export async function runUnfollow({
   const noFollowBackCandidates = orderedProfiles
     .filter(profile => !profile.viewer?.followedBy)
     .filter(profile => profile.followedAt <= cutoff);
+  const followingBackCount = orderedProfiles.filter(profile => profile.viewer?.followedBy).length;
+  const notFollowingBackCount = orderedProfiles.length - followingBackCount;
+  const notFollowingBackInGraceCount = orderedProfiles
+    .filter(profile => !profile.viewer?.followedBy)
+    .filter(profile => profile.followedAt > cutoff)
+    .length;
 
   const state = await loadState(statePath);
   const noFollowBackDids = new Set(noFollowBackCandidates.map(profile => profile.did));
@@ -313,6 +324,11 @@ export async function runUnfollow({
     followsRead: follows.records.length,
     followRecordsRead: follows.recordsRead,
     duplicateFollowRecords: follows.duplicateRecords,
+    followingBackCount,
+    notFollowingBackCount,
+    notFollowingBackInGraceCount,
+    oldestFollowedAt: orderedProfiles[0]?.followedAt ?? null,
+    newestFollowedAt: orderedProfiles.at(-1)?.followedAt ?? null,
     policyProfilesChecked: profilesToReview.length,
     policyReviews,
     policyFailures,

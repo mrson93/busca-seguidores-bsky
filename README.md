@@ -61,8 +61,8 @@ ou nos arquivos publicados pelo GitHub Pages, e as execuções não podem se sob
 
 Na mesma execução, `auto-unfollow.mjs` remove no máximo 50 perfis, sempre do follow mais
 antigo em direção ao mais recente. Entram três motivos independentes: não seguir a conta
-de volta após 7 dias, conteúdo adulto ou sinal forte de que o perfil não é brasileiro.
-Os dois últimos não têm prazo de carência e também valem para quem segue de volta.
+de volta, conteúdo adulto ou sinal forte de que o perfil não é brasileiro. Nenhum deles
+tem prazo de carência; os dois últimos também valem para quem segue de volta.
 
 Como o Bluesky não fornece nacionalidade, a classificação é conservadora: usa sinais
 explícitos no perfil, domínio e idioma regional dos posts, como `🇵🇹`, Portugal, `.pt` ou

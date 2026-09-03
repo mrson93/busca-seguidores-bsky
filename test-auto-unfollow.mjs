@@ -66,16 +66,32 @@ try {
       statePath: join(directory, 'dry-state.json'),
     });
     assert.equal(result.mode, 'dry-run');
-    assert.equal(result.graceDays, 7);
+    assert.equal(result.graceDays, 0);
     assert.equal(result.maxUnfollows, 50);
     assert.equal(result.followsRead, 4);
     assert.equal(result.followRecordsRead, 5);
     assert.equal(result.duplicateFollowRecords, 1);
     assert.deepEqual(result.candidates.map(item => item.handle),
-      ['oldest.bsky.social', 'old.bsky.social']);
+      ['oldest.bsky.social', 'old.bsky.social', 'recent.bsky.social']);
+    assert.equal(result.followingBackCount, 1);
+    assert.equal(result.notFollowingBackCount, 3);
+    assert.equal(result.notFollowingBackInGraceCount, 0);
     assert.equal(result.candidates[0].followRecords, 2);
     assert.equal(api.calls.some(call => call.path === 'com.atproto.repo.deleteRecord'), false);
-    console.log('ok 1 - seleciona apenas nao seguidores antigos, do follow mais velho ao mais novo');
+    console.log('ok 1 - seleciona nao seguidores do follow mais velho ao mais novo');
+  }
+
+  {
+    const api = mock();
+    const result = await runUnfollow({
+      account, now, fetchFn: api.fetchFn, graceDays: 7, recordHistory: false,
+      statePath: join(directory, 'grace-state.json'),
+    });
+    assert.deepEqual(result.candidates.map(item => item.handle),
+      ['oldest.bsky.social', 'old.bsky.social']);
+    assert.equal(result.notFollowingBackCount, 3);
+    assert.equal(result.notFollowingBackInGraceCount, 1);
+    console.log('ok 2 - permite carencia opcional sem esconder a quantidade bloqueada');
   }
 
   {
@@ -94,7 +110,7 @@ try {
     assert.equal(result.unfollowed[0].recordsDeleted, 2);
     const state = JSON.parse(await readFile(statePath, 'utf8'));
     assert.equal(state.unfollowed['did:plc:oldest'].handle, 'oldest.bsky.social');
-    console.log('ok 2 - remove todos os registros duplicados, confirma e persiste o perfil');
+    console.log('ok 3 - remove todos os registros duplicados, confirma e persiste o perfil');
   }
 
   {
@@ -110,7 +126,7 @@ try {
     assert.match(result.failures[0].error, /continua seguido/);
     const state = JSON.parse(await readFile(statePath, 'utf8'));
     assert.equal(state.unfollowed['did:plc:oldest'], undefined);
-    console.log('ok 3 - nao contabiliza nem persiste enquanto o perfil continuar seguido');
+    console.log('ok 4 - nao contabiliza nem persiste enquanto o perfil continuar seguido');
   }
 
   {
@@ -175,7 +191,7 @@ try {
     assert.deepEqual(state.unfollowed['did:plc:adult'].reasons, ['adult_content']);
     assert.equal(state.reviewed['did:plc:brasil'].nationality, 'brazilian');
     assert.equal(state.reviewed['did:plc:unknown'].nationality, 'unknown');
-    console.log('ok 4 - remove adultos e nao brasileiros, preservando brasileiros e desconhecidos');
+    console.log('ok 5 - remove adultos e nao brasileiros, preservando brasileiros e desconhecidos');
   }
 } finally {
   await rm(directory, { recursive: true, force: true });
