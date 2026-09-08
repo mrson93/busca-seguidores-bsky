@@ -7,8 +7,8 @@ assert.equal(dentroDaProporcao(120, 100, 20), true);
 assert.equal(dentroDaProporcao(79, 100, 20), false);
 assert.equal(dentroDaProporcao(121, 100, 20), false);
 assert.equal(dentroDaProporcao(undefined, 100, 20), false);
-assert.equal(dentroDaProporcao(90, 100), true);
-assert.equal(dentroDaProporcao(89, 100), false);
+assert.equal(dentroDaProporcao(80, 100), true);
+assert.equal(dentroDaProporcao(79, 100), false);
 console.log('ok 1 - proporcao configurada inclui os limites e rejeita contagens ausentes');
 
 const profiles = {
@@ -54,7 +54,7 @@ const now = new Date('2026-08-30T13:00:00Z');
   const api = mock();
   const result = await runAutomation({ account, now, fetchFn: api.fetchFn, recordHistory: false });
   assert.equal(result.mode, 'dry-run');
-  assert.equal(result.ratioPct, 10);
+  assert.equal(result.ratioPct, 20);
   assert.equal(result.maxFollows, 30);
   assert.equal(result.maxPages, 20);
   assert.equal(result.pagesRead, 1);
