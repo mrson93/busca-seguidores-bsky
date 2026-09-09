@@ -18,6 +18,12 @@ const positive = (value, fallback) => {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 };
 
+export const normalizeSearchTerms = value => [...new Set(
+  (Array.isArray(value) ? value : String(value ?? '').split(','))
+    .map(term => String(term).trim())
+    .filter(Boolean),
+)].slice(0, 10);
+
 export const dentroDaProporcao = (followers, follows, ratioPct = DEFAULTS.ratioPct) =>
   Number.isFinite(followers) && Number.isFinite(follows) &&
   Math.abs(followers - follows) <= follows * ratioPct / 100;
@@ -45,38 +51,47 @@ const login = (fetchFn, account) => requestJson(fetchFn, 'com.atproto.server.cre
   body: { identifier: account.handle.replace(/^@/, ''), password: account.appPassword },
 });
 
-async function recentAuthors(fetchFn, token, { since, maxPages }) {
+async function recentAuthors(fetchFn, token, { since, maxPages, searchTerms }) {
   const authors = new Map();
-  let cursor;
   let postsRead = 0;
   let pagesRead = 0;
-  for (let page = 0; page < maxPages; page++) {
-    const data = await requestJson(fetchFn, 'app.bsky.feed.searchPostsV2', {
-      token,
-      params: { limit: 100, sort: 'recent', languages: ['pt'], since, ...(cursor && { cursor }) },
-    });
-    const posts = data.posts ?? [];
-    pagesRead++;
-    postsRead += posts.length;
-    let reachedWindowStart = false;
-    for (const post of posts) {
-      if (!post.indexedAt || post.indexedAt < since) {
-        reachedWindowStart = true;
-        continue;
+  let truncated = false;
+  const queries = searchTerms.length ? searchTerms : [undefined];
+  for (const query of queries) {
+    let cursor;
+    for (let page = 0; page < maxPages; page++) {
+      const data = await requestJson(fetchFn, 'app.bsky.feed.searchPostsV2', {
+        token,
+        params: {
+          limit: 100,
+          sort: 'recent',
+          languages: ['pt'],
+          since,
+          ...(query && { query }),
+          ...(cursor && { cursor }),
+        },
+      });
+      const posts = data.posts ?? [];
+      pagesRead++;
+      postsRead += posts.length;
+      let reachedWindowStart = false;
+      for (const post of posts) {
+        if (!post.indexedAt || post.indexedAt < since) {
+          reachedWindowStart = true;
+          continue;
+        }
+        if (post.indexedAt === since) reachedWindowStart = true;
+        if (!post.record?.langs?.some(lang => /^pt(?:-|$)/i.test(lang))) continue;
+        const previous = authors.get(post.author.did);
+        if (!previous || post.indexedAt > previous.matchedAt)
+          authors.set(post.author.did, { ...post.author, matchedAt: post.indexedAt });
       }
-      if (post.indexedAt === since) reachedWindowStart = true;
-      if (!post.record?.langs?.some(lang => /^pt(?:-|$)/i.test(lang))) continue;
-      const previous = authors.get(post.author.did);
-      if (!previous || post.indexedAt > previous.matchedAt)
-        authors.set(post.author.did, { ...post.author, matchedAt: post.indexedAt });
-    }
-    cursor = data.cursor;
-    if (!cursor || !posts.length || reachedWindowStart) {
-      cursor = undefined;
-      break;
+      cursor = data.cursor;
+      if (!cursor || !posts.length || reachedWindowStart) break;
+      if (page === maxPages - 1) truncated = true;
     }
   }
-  return { authors: [...authors.values()], postsRead, pagesRead, truncated: Boolean(cursor) };
+  return { authors: [...authors.values()], postsRead, pagesRead, truncated };
 }
 
 async function hydrateProfiles(fetchFn, token, authors) {
@@ -121,6 +136,7 @@ export async function runAutomation({
   ratioPct = DEFAULTS.ratioPct,
   maxFollows = DEFAULTS.maxFollows,
   maxPages = DEFAULTS.maxPages,
+  searchTerms = [],
   now = new Date(),
   fetchFn = fetch,
   sleepFn = delay,
@@ -135,10 +151,11 @@ export async function runAutomation({
   ratioPct = positive(ratioPct, DEFAULTS.ratioPct);
   maxFollows = Math.min(50, Math.floor(positive(maxFollows, DEFAULTS.maxFollows)));
   maxPages = Math.floor(positive(maxPages, DEFAULTS.maxPages));
+  searchTerms = normalizeSearchTerms(searchTerms);
 
   const session = await login(fetchFn, account);
   const since = new Date(now.getTime() - windowMinutes * 60000).toISOString();
-  const search = await recentAuthors(fetchFn, session.accessJwt, { since, maxPages });
+  const search = await recentAuthors(fetchFn, session.accessJwt, { since, maxPages, searchTerms });
   const profiles = await hydrateProfiles(fetchFn, session.accessJwt, search.authors);
   const eligibleProfiles = profiles
     .filter(profile => profile.did !== session.did)
@@ -204,6 +221,7 @@ export async function runAutomation({
     mode: execute ? 'execute' : 'dry-run',
     windowMinutes,
     ratioPct,
+    searchTerms,
     maxFollows,
     maxPages,
     pagesRead: search.pagesRead,
@@ -258,9 +276,13 @@ async function main() {
     execute: process.argv.includes('--execute'),
     windowMinutes: process.env.AUTO_FOLLOW_WINDOW_MINUTES,
     ratioPct: process.env.AUTO_FOLLOW_RATIO_PCT,
+    searchTerms: process.env.AUTO_FOLLOW_SEARCH_TERMS,
     maxFollows: process.env.AUTO_FOLLOW_MAX_FOLLOWS,
     maxPages: process.env.AUTO_FOLLOW_MAX_PAGES,
-    excludedDids: await loadExcludedDids(),
+    excludedDids: await loadExcludedDids(resolve(
+      ROOT,
+      process.env.AUTO_FOLLOW_STATE_FILE || '.auto-follow-state.json',
+    )),
   });
   const {
     account: _account,

@@ -48,7 +48,9 @@ Cada execução é registrada localmente em `auto-follow-history.jsonl`, arquivo
 pelo Git. A primeira conta válida do `config.js` é usada. Para escolher outra ou ajustar
 os limites, defina `AUTO_FOLLOW_HANDLE`, `AUTO_FOLLOW_WINDOW_MINUTES`,
 `AUTO_FOLLOW_RATIO_PCT`, `AUTO_FOLLOW_MAX_FOLLOWS` ou `AUTO_FOLLOW_MAX_PAGES` no
-ambiente.
+ambiente. Para restringir a descoberta a assuntos específicos, use
+`AUTO_FOLLOW_SEARCH_TERMS` com termos separados por vírgula; cada termo é pesquisado
+separadamente e os autores duplicados são consolidados.
 
 ### Execução na nuvem
 
@@ -71,6 +73,12 @@ sem evidência suficiente ficam como desconhecidos e são mantidos. A cada rodad
 revisados até 100 follows ainda não avaliados, começando pelos mais antigos; perfis
 mantidos voltam a ser verificados após 30 dias. Esses limites podem ser ajustados com
 `AUTO_UNFOLLOW_POLICY_SCAN_LIMIT` e `AUTO_UNFOLLOW_POLICY_REVIEW_DAYS`.
+
+O workflow também aceita uma segunda conta isolada por meio dos secrets
+`SECONDARY_BSKY_HANDLE` e `SECONDARY_BSKY_APP_PASSWORD`. Ela mantém estado próprio e,
+na configuração atual, procura publicações em português sobre filmes, cinema e séries,
+com diferença máxima de 30% entre seguidores e seguindo. Se esses secrets estiverem
+ausentes, a segunda rotina é ignorada sem afetar a conta principal.
 
 Quando há registros de follow duplicados para a mesma pessoa, todos são removidos na
 mesma passagem. O perfil só é contabilizado e gravado no histórico depois que a API

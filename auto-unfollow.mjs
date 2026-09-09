@@ -364,6 +364,7 @@ async function main() {
     maxUnfollows: process.env.AUTO_UNFOLLOW_MAX,
     policyScanLimit: process.env.AUTO_UNFOLLOW_POLICY_SCAN_LIMIT,
     policyReviewDays: process.env.AUTO_UNFOLLOW_POLICY_REVIEW_DAYS,
+    statePath: resolve(ROOT, process.env.AUTO_FOLLOW_STATE_FILE || '.auto-follow-state.json'),
   });
   const {
     account: _account,

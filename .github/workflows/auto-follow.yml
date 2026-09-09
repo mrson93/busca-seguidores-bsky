@@ -56,3 +56,58 @@ jobs:
         with:
           path: .auto-follow-state.json
           key: auto-follow-state-${{ github.run_id }}
+
+  follow-secondary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Verificar configuração da segunda conta
+        id: account
+        env:
+          BSKY_HANDLE: ${{ secrets.SECONDARY_BSKY_HANDLE }}
+          BSKY_APP_PASSWORD: ${{ secrets.SECONDARY_BSKY_APP_PASSWORD }}
+        run: |
+          if [ -n "$BSKY_HANDLE" ] && [ -n "$BSKY_APP_PASSWORD" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "Segunda conta ainda não configurada; rotina ignorada com segurança."
+          fi
+      - name: Baixar o projeto
+        if: steps.account.outputs.configured == 'true'
+        uses: actions/checkout@v6
+      - name: Preparar Node.js
+        if: steps.account.outputs.configured == 'true'
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - name: Restaurar estado da segunda conta
+        if: steps.account.outputs.configured == 'true'
+        uses: actions/cache/restore@v5
+        with:
+          path: .auto-follow-state-secondary.json
+          key: auto-follow-state-secondary-${{ github.run_id }}
+          restore-keys: auto-follow-state-secondary-
+      - name: Remover perfis da segunda conta
+        if: steps.account.outputs.configured == 'true'
+        run: node auto-unfollow.mjs --execute
+        env:
+          BSKY_HANDLE: ${{ secrets.SECONDARY_BSKY_HANDLE }}
+          BSKY_APP_PASSWORD: ${{ secrets.SECONDARY_BSKY_APP_PASSWORD }}
+          AUTO_FOLLOW_STATE_FILE: .auto-follow-state-secondary.json
+      - name: Buscar e seguir fãs de filmes e séries
+        if: steps.account.outputs.configured == 'true'
+        run: node auto-follow.mjs --execute
+        env:
+          BSKY_HANDLE: ${{ secrets.SECONDARY_BSKY_HANDLE }}
+          BSKY_APP_PASSWORD: ${{ secrets.SECONDARY_BSKY_APP_PASSWORD }}
+          AUTO_FOLLOW_STATE_FILE: .auto-follow-state-secondary.json
+          AUTO_FOLLOW_RATIO_PCT: 30
+          AUTO_FOLLOW_SEARCH_TERMS: filme,filmes,cinema,série,séries,seriado,seriados
+          AUTO_FOLLOW_MAX_PAGES: 5
+      - name: Salvar estado da segunda conta
+        if: always() && steps.account.outputs.configured == 'true'
+        uses: actions/cache/save@v5
+        with:
+          path: .auto-follow-state-secondary.json
+          key: auto-follow-state-secondary-${{ github.run_id }}
