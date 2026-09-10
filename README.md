@@ -68,8 +68,9 @@ para reciprocidade pode ser ajustada com `AUTO_UNFOLLOW_GRACE_DAYS`; os dois úl
 motivos continuam valendo imediatamente para quem segue de volta.
 
 A opção `AUTO_UNFOLLOW_CLEAN_STALE_RECORDS` também remove gradualmente registros antigos
-de contas apagadas, suspensas ou que já não aparecem como relação ativa no Bluesky. Ela
-está habilitada para a conta principal para reduzir o excedente histórico de follows.
+de contas apagadas, suspensas ou que já não aparecem como relação ativa no Bluesky. Na
+conta principal, a limpeza está habilitada, o filtro de equilíbrio está em 25% e há três
+dias de carência antes do unfollow por falta de reciprocidade.
 
 Como o Bluesky não fornece nacionalidade, a classificação é conservadora: usa sinais
 explícitos no perfil, domínio e idioma regional dos posts, como `🇵🇹`, Portugal, `.pt` ou
@@ -82,9 +83,8 @@ mantidos voltam a ser verificados após 30 dias. Esses limites podem ser ajustad
 O workflow também aceita uma segunda conta isolada por meio dos secrets
 `SECONDARY_BSKY_HANDLE` e `SECONDARY_BSKY_APP_PASSWORD`. Ela mantém estado próprio e,
 na configuração atual, procura publicações em português sobre filmes, cinema e séries,
-com diferença máxima de 25% entre seguidores e seguindo e carência de três dias antes do
-unfollow por falta de reciprocidade. Se esses secrets estiverem ausentes, a segunda
-rotina é ignorada sem afetar a conta principal.
+com diferença máxima de 30% entre seguidores e seguindo. Se esses secrets estiverem
+ausentes, a segunda rotina é ignorada sem afetar a conta principal.
 
 Quando há registros de follow duplicados para a mesma pessoa, todos são removidos na
 mesma passagem. O perfil só é contabilizado e gravado no histórico depois que a API

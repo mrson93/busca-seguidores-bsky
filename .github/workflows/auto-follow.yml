@@ -45,12 +45,14 @@ jobs:
         env:
           BSKY_HANDLE: ${{ secrets.BSKY_HANDLE }}
           BSKY_APP_PASSWORD: ${{ secrets.BSKY_APP_PASSWORD }}
+          AUTO_UNFOLLOW_GRACE_DAYS: 3
           AUTO_UNFOLLOW_CLEAN_STALE_RECORDS: true
       - name: Buscar e seguir perfis
         run: node auto-follow.mjs --execute
         env:
           BSKY_HANDLE: ${{ secrets.BSKY_HANDLE }}
           BSKY_APP_PASSWORD: ${{ secrets.BSKY_APP_PASSWORD }}
+          AUTO_FOLLOW_RATIO_PCT: 25
       - name: Salvar histórico de unfollows
         if: always()
         uses: actions/cache/save@v5
@@ -96,7 +98,6 @@ jobs:
           BSKY_HANDLE: ${{ secrets.SECONDARY_BSKY_HANDLE }}
           BSKY_APP_PASSWORD: ${{ secrets.SECONDARY_BSKY_APP_PASSWORD }}
           AUTO_FOLLOW_STATE_FILE: .auto-follow-state-secondary.json
-          AUTO_UNFOLLOW_GRACE_DAYS: 3
       - name: Buscar e seguir fãs de filmes e séries
         if: steps.account.outputs.configured == 'true'
         run: node auto-follow.mjs --execute
@@ -104,7 +105,7 @@ jobs:
           BSKY_HANDLE: ${{ secrets.SECONDARY_BSKY_HANDLE }}
           BSKY_APP_PASSWORD: ${{ secrets.SECONDARY_BSKY_APP_PASSWORD }}
           AUTO_FOLLOW_STATE_FILE: .auto-follow-state-secondary.json
-          AUTO_FOLLOW_RATIO_PCT: 25
+          AUTO_FOLLOW_RATIO_PCT: 30
           AUTO_FOLLOW_SEARCH_TERMS: filme,filmes,cinema,série,séries,seriado,seriados
           AUTO_FOLLOW_MAX_PAGES: 5
       - name: Salvar estado da segunda conta
