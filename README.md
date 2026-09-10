@@ -63,8 +63,13 @@ ou nos arquivos publicados pelo GitHub Pages, e as execuções não podem se sob
 
 Na mesma execução, `auto-unfollow.mjs` remove no máximo 50 perfis, sempre do follow mais
 antigo em direção ao mais recente. Entram três motivos independentes: não seguir a conta
-de volta, conteúdo adulto ou sinal forte de que o perfil não é brasileiro. Nenhum deles
-tem prazo de carência; os dois últimos também valem para quem segue de volta.
+de volta, conteúdo adulto ou sinal forte de que o perfil não é brasileiro. A carência
+para reciprocidade pode ser ajustada com `AUTO_UNFOLLOW_GRACE_DAYS`; os dois últimos
+motivos continuam valendo imediatamente para quem segue de volta.
+
+A opção `AUTO_UNFOLLOW_CLEAN_STALE_RECORDS` também remove gradualmente registros antigos
+de contas apagadas, suspensas ou que já não aparecem como relação ativa no Bluesky. Ela
+está habilitada para a conta principal para reduzir o excedente histórico de follows.
 
 Como o Bluesky não fornece nacionalidade, a classificação é conservadora: usa sinais
 explícitos no perfil, domínio e idioma regional dos posts, como `🇵🇹`, Portugal, `.pt` ou
@@ -77,8 +82,9 @@ mantidos voltam a ser verificados após 30 dias. Esses limites podem ser ajustad
 O workflow também aceita uma segunda conta isolada por meio dos secrets
 `SECONDARY_BSKY_HANDLE` e `SECONDARY_BSKY_APP_PASSWORD`. Ela mantém estado próprio e,
 na configuração atual, procura publicações em português sobre filmes, cinema e séries,
-com diferença máxima de 30% entre seguidores e seguindo. Se esses secrets estiverem
-ausentes, a segunda rotina é ignorada sem afetar a conta principal.
+com diferença máxima de 25% entre seguidores e seguindo e carência de três dias antes do
+unfollow por falta de reciprocidade. Se esses secrets estiverem ausentes, a segunda
+rotina é ignorada sem afetar a conta principal.
 
 Quando há registros de follow duplicados para a mesma pessoa, todos são removidos na
 mesma passagem. O perfil só é contabilizado e gravado no histórico depois que a API

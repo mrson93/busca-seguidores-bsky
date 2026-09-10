@@ -16,6 +16,8 @@ assert.equal(dentroDaProporcao(80, 100), true);
 assert.equal(dentroDaProporcao(79, 100), false);
 assert.equal(dentroDaProporcao(70, 100, 30), true);
 assert.equal(dentroDaProporcao(69, 100, 30), false);
+assert.equal(dentroDaProporcao(75, 100, 25), true);
+assert.equal(dentroDaProporcao(74, 100, 25), false);
 assert.deepEqual(normalizeSearchTerms('filme, série, filme'), ['filme', 'série']);
 console.log('ok 1 - proporcao configurada inclui os limites e rejeita contagens ausentes');
 

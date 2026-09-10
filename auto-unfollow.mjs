@@ -14,6 +14,7 @@ const DEFAULTS = {
   maxPages: 300,
   policyScanLimit: 100,
   policyReviewDays: 30,
+  cleanStaleRecords: false,
 };
 const WAIT = { min: 10000, max: 30000 };
 const VERIFY = { attempts: 3, wait: 1000 };
@@ -26,6 +27,11 @@ const positive = (value, fallback) => {
 const nonNegative = (value, fallback) => {
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
+};
+
+const boolean = (value, fallback) => {
+  if (value === undefined || value === null || value === '') return fallback;
+  return /^(?:1|true|yes|sim)$/i.test(String(value));
 };
 
 const requestJson = async (fetchFn, path, { params, body, token } = {}) => {
@@ -172,6 +178,7 @@ export async function runUnfollow({
   maxPages = DEFAULTS.maxPages,
   policyScanLimit = DEFAULTS.policyScanLimit,
   policyReviewDays = DEFAULTS.policyReviewDays,
+  cleanStaleRecords = DEFAULTS.cleanStaleRecords,
   now = new Date(),
   fetchFn = fetch,
   sleepFn = delay,
@@ -187,10 +194,12 @@ export async function runUnfollow({
   maxPages = Math.floor(positive(maxPages, DEFAULTS.maxPages));
   policyScanLimit = Math.min(500, Math.floor(positive(policyScanLimit, DEFAULTS.policyScanLimit)));
   policyReviewDays = positive(policyReviewDays, DEFAULTS.policyReviewDays);
+  cleanStaleRecords = boolean(cleanStaleRecords, DEFAULTS.cleanStaleRecords);
 
   const session = await login(fetchFn, account);
   const follows = await followRecords(fetchFn, session, maxPages);
   const profiles = await hydrateProfiles(fetchFn, session.accessJwt, follows.records);
+  const profilesByDid = new Map(profiles.map(profile => [profile.did, profile]));
   const cutoff = new Date(now.getTime() - graceDays * 86400000).toISOString();
   const orderedProfiles = profiles
     .filter(profile => profile.did !== session.did)
@@ -205,6 +214,20 @@ export async function runUnfollow({
     .filter(profile => !profile.viewer?.followedBy)
     .filter(profile => profile.followedAt > cutoff)
     .length;
+  // O repositório pode conservar registros de follow para contas apagadas,
+  // suspensas ou que já não aparecem como relação ativa no AppView. Esses
+  // registros inflavam o total de "seguindo" e antes nunca eram considerados.
+  const staleFollowRecords = follows.records
+    .filter(record => !profilesByDid.get(record.did)?.viewer?.following)
+    .map(record => ({
+      ...record,
+      handle: profilesByDid.get(record.did)?.handle ?? record.did,
+      reasons: ['stale_follow_record'],
+      stale: true,
+    }));
+  const staleFollowRecordCandidates = cleanStaleRecords
+    ? staleFollowRecords.filter(record => record.followedAt <= cutoff)
+    : [];
 
   const state = await loadState(statePath);
   const noFollowBackDids = new Set(noFollowBackCandidates.map(profile => profile.did));
@@ -246,6 +269,7 @@ export async function runUnfollow({
     ...profile,
     reasons: ['not_following_back'],
   }]));
+  for (const profile of staleFollowRecordCandidates) candidatesByDid.set(profile.did, profile);
   for (const review of policyReviews.filter(item => item.reasons.length)) {
     const profile = orderedProfiles.find(item => item.did === review.did);
     const previous = candidatesByDid.get(review.did);
@@ -278,7 +302,12 @@ export async function runUnfollow({
         }
       }
       try {
-        await confirmUnfollow(fetchFn, session.accessJwt, profile, sleepFn);
+        if (profile.stale) {
+          if (deleteErrors.length || profileRecordsDeleted === 0)
+            throw new Error('não foi possível remover todos os registros obsoletos');
+        } else {
+          await confirmUnfollow(fetchFn, session.accessJwt, profile, sleepFn);
+        }
         const item = {
           did: profile.did,
           handle: profile.handle,
@@ -321,12 +350,15 @@ export async function runUnfollow({
     maxUnfollows,
     policyScanLimit,
     policyReviewDays,
+    cleanStaleRecords,
     followsRead: follows.records.length,
     followRecordsRead: follows.recordsRead,
     duplicateFollowRecords: follows.duplicateRecords,
     followingBackCount,
     notFollowingBackCount,
     notFollowingBackInGraceCount,
+    staleFollowRecordsCount: staleFollowRecords.length,
+    staleFollowRecordsEligibleCount: staleFollowRecordCandidates.length,
     oldestFollowedAt: orderedProfiles[0]?.followedAt ?? null,
     newestFollowedAt: orderedProfiles.at(-1)?.followedAt ?? null,
     policyProfilesChecked: profilesToReview.length,
@@ -364,6 +396,7 @@ async function main() {
     maxUnfollows: process.env.AUTO_UNFOLLOW_MAX,
     policyScanLimit: process.env.AUTO_UNFOLLOW_POLICY_SCAN_LIMIT,
     policyReviewDays: process.env.AUTO_UNFOLLOW_POLICY_REVIEW_DAYS,
+    cleanStaleRecords: process.env.AUTO_UNFOLLOW_CLEAN_STALE_RECORDS,
     statePath: resolve(ROOT, process.env.AUTO_FOLLOW_STATE_FILE || '.auto-follow-state.json'),
   });
   const {
