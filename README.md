@@ -72,6 +72,9 @@ de contas apagadas, suspensas ou que já não aparecem como relação ativa no B
 conta principal, a limpeza está habilitada, o filtro de equilíbrio está em 25% e há três
 dias de carência antes do unfollow por falta de reciprocidade.
 
+Também são revisados até 100 perfis por rodada; perfis sem post ou repost nos últimos
+365 dias entram na fila com a razão `inactive_1y`.
+
 Como o Bluesky não fornece nacionalidade, a classificação é conservadora: usa sinais
 explícitos no perfil, domínio e idioma regional dos posts, como `🇵🇹`, Portugal, `.pt` ou
 `pt-PT`. Um sinal brasileiro, como `🇧🇷`, Brasil, `.br` ou `pt-BR`, tem prioridade. Perfis

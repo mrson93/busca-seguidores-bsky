@@ -47,6 +47,8 @@ jobs:
           BSKY_APP_PASSWORD: ${{ secrets.BSKY_APP_PASSWORD }}
           AUTO_UNFOLLOW_GRACE_DAYS: 3
           AUTO_UNFOLLOW_CLEAN_STALE_RECORDS: true
+          AUTO_UNFOLLOW_INACTIVITY_DAYS: 365
+          AUTO_UNFOLLOW_ACTIVITY_SCAN_LIMIT: 100
       - name: Buscar e seguir perfis
         run: node auto-follow.mjs --execute
         env:

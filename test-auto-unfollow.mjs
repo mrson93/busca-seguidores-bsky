@@ -60,6 +60,59 @@ const mock = ({ keepDeleted = false } = {}) => {
 const directory = await mkdtemp(join(tmpdir(), 'auto-unfollow-test-'));
 try {
   {
+    const calls = [];
+    const records = ['inactive', 'active'].map((name, index) => ({
+      uri: `at://did:plc:me/app.bsky.graph.follow/${name}`,
+      value: { subject: `did:plc:${name}`, createdAt: `2024-01-0${index + 1}T10:00:00Z` },
+    }));
+    const fetchFn = async (input, options = {}) => {
+      const url = new URL(input);
+      const path = url.pathname.split('/').pop();
+      const body = options.body ? JSON.parse(options.body) : undefined;
+      calls.push({ path, url, body });
+      const ok = data => new Response(JSON.stringify(data), { status: 200 });
+      if (path === 'com.atproto.server.createSession')
+        return ok({ did: 'did:plc:me', handle: 'eu.bsky.social', accessJwt: 'token' });
+      if (path === 'com.atproto.repo.listRecords') return ok({ records });
+      if (path === 'app.bsky.actor.getProfiles') return ok({
+        profiles: url.searchParams.getAll('actors').map(did => ({
+          did, handle: did.split(':').pop() + '.bsky.social',
+          viewer: {
+            ...(records.some(record => record.value.subject === did) && {
+              following: `at://did:plc:me/app.bsky.graph.follow/${did.split(':').pop()}`,
+            }),
+            followedBy: 'at://them/follow/me',
+          },
+        })),
+      });
+      if (path === 'app.bsky.feed.getAuthorFeed') {
+        const actor = url.searchParams.get('actor');
+        return ok({ feed: actor === 'did:plc:inactive'
+          ? [{ post: { indexedAt: '2024-01-01T10:00:00Z' } }]
+          : [{ post: { indexedAt: '2026-08-29T10:00:00Z' } }] });
+      }
+      if (path === 'com.atproto.repo.deleteRecord') {
+        const index = records.findIndex(record => record.uri.endsWith('/' + body.rkey));
+        if (index >= 0) records.splice(index, 1);
+        return ok({});
+      }
+      return new Response('{}', { status: 404 });
+    };
+    const result = await runUnfollow({
+      account, now, fetchFn, execute: true, inactivityDays: 365,
+      policyScanLimit: 10, activityScanLimit: 10,
+      sleepFn: async () => {}, recordHistory: false,
+      statePath: join(directory, 'activity-state.json'),
+    });
+    assert.equal(result.activityProfilesChecked, 2);
+    assert.equal(result.inactiveProfilesDetected, 1);
+    assert.deepEqual(result.unfollowed.map(item => item.did), ['did:plc:inactive']);
+    assert.deepEqual(result.unfollowed[0].reasons, ['inactive_1y']);
+    assert.equal(calls.filter(call => call.path === 'app.bsky.feed.getAuthorFeed').length, 2);
+    console.log('ok 6 - remove perfis sem post ou repost ha mais de um ano');
+  }
+
+  {
     const api = mock();
     const result = await runUnfollow({
       account, now, fetchFn: api.fetchFn, recordHistory: false,
@@ -157,7 +210,11 @@ try {
         })),
       });
       if (path === 'app.bsky.feed.getAuthorFeed') return ok({ feed: [] });
-      if (path === 'com.atproto.repo.deleteRecord') return ok({});
+      if (path === 'com.atproto.repo.deleteRecord') {
+        const index = records.findIndex(record => record.uri.endsWith('/' + body.rkey));
+        if (index >= 0) records.splice(index, 1);
+        return ok({});
+      }
       return new Response('{}', { status: 404 });
     };
     const result = await runUnfollow({
@@ -236,7 +293,7 @@ try {
     assert.deepEqual(state.unfollowed['did:plc:adult'].reasons, ['adult_content']);
     assert.equal(state.reviewed['did:plc:brasil'].nationality, 'brazilian');
     assert.equal(state.reviewed['did:plc:unknown'].nationality, 'unknown');
-    console.log('ok 6 - remove adultos e nao brasileiros, preservando brasileiros e desconhecidos');
+    console.log('ok 7 - remove adultos e nao brasileiros, preservando brasileiros e desconhecidos');
   }
 } finally {
   await rm(directory, { recursive: true, force: true });
