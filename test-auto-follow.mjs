@@ -1,13 +1,24 @@
 import assert from 'node:assert/strict';
-import { detectAdultContent, dentroDaProporcao, runAutomation } from './auto-follow.mjs';
+import {
+  detectAdultContent,
+  dentroDaProporcao,
+  normalizeSearchTerms,
+  runAutomation,
+} from './auto-follow.mjs';
+import { detectBrazilianProfile } from './profile-policy.mjs';
 
 assert.equal(dentroDaProporcao(80, 100, 20), true);
 assert.equal(dentroDaProporcao(120, 100, 20), true);
 assert.equal(dentroDaProporcao(79, 100, 20), false);
 assert.equal(dentroDaProporcao(121, 100, 20), false);
 assert.equal(dentroDaProporcao(undefined, 100, 20), false);
-assert.equal(dentroDaProporcao(90, 100), true);
-assert.equal(dentroDaProporcao(89, 100), false);
+assert.equal(dentroDaProporcao(80, 100), true);
+assert.equal(dentroDaProporcao(79, 100), false);
+assert.equal(dentroDaProporcao(70, 100, 30), true);
+assert.equal(dentroDaProporcao(69, 100, 30), false);
+assert.equal(dentroDaProporcao(75, 100, 25), true);
+assert.equal(dentroDaProporcao(74, 100, 25), false);
+assert.deepEqual(normalizeSearchTerms('filme, série, filme'), ['filme', 'série']);
 console.log('ok 1 - proporcao configurada inclui os limites e rejeita contagens ausentes');
 
 const profiles = {
@@ -53,7 +64,7 @@ const now = new Date('2026-08-30T13:00:00Z');
   const api = mock();
   const result = await runAutomation({ account, now, fetchFn: api.fetchFn, recordHistory: false });
   assert.equal(result.mode, 'dry-run');
-  assert.equal(result.ratioPct, 10);
+  assert.equal(result.ratioPct, 20);
   assert.equal(result.maxFollows, 30);
   assert.equal(result.maxPages, 20);
   assert.equal(result.pagesRead, 1);
@@ -69,6 +80,26 @@ const now = new Date('2026-08-30T13:00:00Z');
 {
   const api = mock();
   const result = await runAutomation({
+    account,
+    now,
+    fetchFn: api.fetchFn,
+    searchTerms: ['filme', 'série', 'filme'],
+    ratioPct: 30,
+    recordHistory: false,
+  });
+  assert.deepEqual(result.searchTerms, ['filme', 'série']);
+  assert.equal(result.ratioPct, 30);
+  assert.deepEqual(
+    api.calls.filter(call => call.path === 'app.bsky.feed.searchPostsV2')
+      .map(call => call.url.searchParams.get('query')),
+    ['filme', 'série'],
+  );
+  console.log('ok 3 - busca termos tematicos separadamente e remove duplicatas');
+}
+
+{
+  const api = mock();
+  const result = await runAutomation({
     account, now, fetchFn: api.fetchFn, execute: true, maxFollows: 1,
     sleepFn: async () => {}, recordHistory: false,
   });
@@ -76,7 +107,7 @@ const now = new Date('2026-08-30T13:00:00Z');
   const writes = api.calls.filter(call => call.path === 'com.atproto.repo.createRecord');
   assert.equal(writes.length, 1);
   assert.equal(writes[0].body.record.subject, 'did:plc:a');
-  console.log('ok 3 - execucao respeita o limite e cria o follow correto');
+  console.log('ok 4 - execucao respeita o limite e cria o follow correto');
 }
 
 {
@@ -86,7 +117,7 @@ const now = new Date('2026-08-30T13:00:00Z');
     excludedDids: new Set(['did:plc:a']),
   });
   assert.equal(result.candidates.length, 0);
-  console.log('ok 4 - nao volta a seguir um perfil removido pela automacao');
+  console.log('ok 5 - nao volta a seguir um perfil removido pela automacao');
 }
 
 const paginationMock = ({ endless = false } = {}) => {
@@ -146,7 +177,7 @@ const paginationMock = ({ endless = false } = {}) => {
   assert.deepEqual(result.candidates.map(item => item.handle),
     ['inside-a.bsky.social', 'inside-b.bsky.social']);
   assert.equal(api.calls.filter(call => call.path === 'app.bsky.feed.searchPostsV2').length, 2);
-  console.log('ok 5 - pagina ate o inicio da janela e descarta posts anteriores');
+  console.log('ok 6 - pagina ate o inicio da janela e descarta posts anteriores');
 }
 
 {
@@ -157,7 +188,7 @@ const paginationMock = ({ endless = false } = {}) => {
   assert.equal(result.pagesRead, 2);
   assert.equal(result.truncated, true);
   assert.equal(api.calls.filter(call => call.path === 'app.bsky.feed.searchPostsV2').length, 2);
-  console.log('ok 6 - informa truncamento quando atinge o limite de seguranca');
+  console.log('ok 7 - informa truncamento quando atinge o limite de seguranca');
 }
 
 {
@@ -169,7 +200,19 @@ const paginationMock = ({ endless = false } = {}) => {
   assert.deepEqual(detected.labels, ['nudity']);
   assert.equal(detectAdultContent({ description: 'NSFW 🔞' }).adult, true);
   assert.equal(detectAdultContent({ description: 'vida adulta sem drama' }).adult, false);
-  console.log('ok 7 - detecta rotulos e sinais explicitos sem considerar rotulo negado');
+  console.log('ok 8 - detecta rotulos e sinais explicitos sem considerar rotulo negado');
+}
+
+{
+  assert.equal(detectBrazilianProfile({ description: 'Brasileira 🇧🇷' }).status, 'brazilian');
+  assert.equal(detectBrazilianProfile({ description: 'Lisboa, Portugal 🇵🇹' }).status, 'non_brazilian');
+  assert.equal(detectBrazilianProfile({}, [{ post: { record: { langs: ['pt-BR'] } } }]).status,
+    'brazilian');
+  assert.equal(detectBrazilianProfile({}, [{ post: { record: { langs: ['pt-PT'] } } }]).status,
+    'non_brazilian');
+  assert.equal(detectBrazilianProfile({ description: 'Escrevo em português' }).status, 'unknown');
+  assert.equal(detectBrazilianProfile({ description: 'Brasil e Portugal 🇧🇷 🇵🇹' }).status, 'brazilian');
+  console.log('ok 9 - classifica nacionalidade apenas com sinais fortes e preserva desconhecidos');
 }
 
 {
@@ -185,6 +228,10 @@ const paginationMock = ({ endless = false } = {}) => {
     },
     'did:plc:feed': {
       did: 'did:plc:feed', handle: 'feed.bsky.social', followersCount: 100, followsCount: 100, viewer: {},
+    },
+    'did:plc:portugal': {
+      did: 'did:plc:portugal', handle: 'portugal.bsky.social', followersCount: 100, followsCount: 100,
+      viewer: {}, description: 'Lisboa, Portugal 🇵🇹',
     },
     'did:plc:clean': {
       did: 'did:plc:clean', handle: 'clean.bsky.social', followersCount: 100, followsCount: 100, viewer: {},
@@ -220,9 +267,10 @@ const paginationMock = ({ endless = false } = {}) => {
   });
   assert.deepEqual(result.followed.map(item => item.handle), ['clean.bsky.social']);
   assert.equal(result.adultProfilesSkipped.length, 3);
-  assert.equal(result.profilesCheckedForAdultContent, 4);
+  assert.equal(result.nonBrazilianProfilesSkipped.length, 1);
+  assert.equal(result.profilesCheckedForAdultContent, 5);
   assert.equal(calls.filter(call => call.path === 'com.atproto.repo.createRecord').length, 1);
-  console.log('ok 8 - ignora perfis adultos e continua procurando ate preencher o limite');
+  console.log('ok 10 - ignora adultos e nao brasileiros ate encontrar um perfil elegivel');
 }
 
 {
@@ -241,7 +289,7 @@ const paginationMock = ({ endless = false } = {}) => {
   assert.equal(result.followed.length, 0);
   assert.equal(result.adultCheckFailures.length, 1);
   assert.equal(api.calls.some(call => call.path === 'com.atproto.repo.createRecord'), false);
-  console.log('ok 9 - falha de verificacao impede follow por seguranca');
+  console.log('ok 11 - falha de verificacao impede follow por seguranca');
 }
 
 console.log('\ntodos passaram');

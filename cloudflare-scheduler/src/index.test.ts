@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { dispatchWorkflow } from "./index";
 
 const config = {
-  owner: "emersonpettorini",
+  owner: "mrson93",
   repository: "busca-seguidores-bsky",
   workflow: "auto-follow.yml",
   ref: "main",
@@ -19,7 +19,7 @@ describe("dispatchWorkflow", () => {
     expect(fetcher).toHaveBeenCalledOnce();
     const [url, options] = fetcher.mock.calls[0];
     expect(url).toBe(
-      "https://api.github.com/repos/emersonpettorini/busca-seguidores-bsky/actions/workflows/auto-follow.yml/dispatches",
+      "https://api.github.com/repos/mrson93/busca-seguidores-bsky/actions/workflows/auto-follow.yml/dispatches",
     );
     expect(options?.method).toBe("POST");
     expect(options?.headers).toMatchObject({

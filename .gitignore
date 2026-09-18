@@ -13,6 +13,7 @@ boot.mjs
 script.txt
 
 # configuracoes locais de assistentes e permissoes da maquina
+.DS_Store
 .claude/
 
 # pacote limpo gerado por prepare-publish.mjs

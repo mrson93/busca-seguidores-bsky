@@ -19,7 +19,7 @@ e deixar de seguir na própria lista, individualmente ou em massa.
 ## Follow automático periódico
 
 O `auto-follow.mjs` procura posts marcados como português nos últimos 60 minutos,
-mantém apenas perfis cujos seguidores estejam dentro de 10% da quantidade de contas
+mantém apenas perfis cujos seguidores estejam dentro de 20% da quantidade de contas
 que seguem e limita cada execução a 30 follows. A própria conta, perfis já seguidos e
 perfis bloqueados ficam de fora. Entre cada follow há uma pausa aleatória de 10 a 30
 segundos para reduzir o risco de limite da API. A busca percorre as páginas até chegar
@@ -27,9 +27,10 @@ ao início da janela de 60 minutos, com um teto de segurança de 20 páginas.
 
 Antes de seguir, a automação verifica os rótulos `porn`, `sexual` e `nudity` no perfil
 e nos 50 posts recentes. Também rejeita bios e posts com divulgação adulta explícita,
-como `NSFW`, `🔞`, nudez e links de plataformas adultas. Se essa verificação falhar,
-o perfil não é seguido. O filtro reduz bastante o risco, mas depende dos rótulos e dos
-textos publicados e, portanto, não garante detectar conteúdo adulto ainda não rotulado.
+como `NSFW`, `🔞`, nudez e links de plataformas adultas, além de perfis com sinal forte
+de outro país. Se a verificação falhar, o perfil não é seguido. O filtro reduz bastante
+o risco, mas depende dos rótulos, textos e sinais públicos e, portanto, não garante
+detectar conteúdo adulto ainda não rotulado nem determinar toda nacionalidade.
 
 Primeiro rode em simulação, que não segue ninguém:
 
@@ -47,27 +48,54 @@ Cada execução é registrada localmente em `auto-follow-history.jsonl`, arquivo
 pelo Git. A primeira conta válida do `config.js` é usada. Para escolher outra ou ajustar
 os limites, defina `AUTO_FOLLOW_HANDLE`, `AUTO_FOLLOW_WINDOW_MINUTES`,
 `AUTO_FOLLOW_RATIO_PCT`, `AUTO_FOLLOW_MAX_FOLLOWS` ou `AUTO_FOLLOW_MAX_PAGES` no
-ambiente.
+ambiente. Para restringir a descoberta a assuntos específicos, use
+`AUTO_FOLLOW_SEARCH_TERMS` com termos separados por vírgula; cada termo é pesquisado
+separadamente e os autores duplicados são consolidados.
 
 ### Execução na nuvem
 
 O Cloudflare Worker `busca-seguidores-bsky-scheduler` dispara o workflow
 `.github/workflows/auto-follow.yml` no minuto 17 de cada hora. O workflow também pode
 ser iniciado manualmente. O Worker guarda no cofre do Cloudflare um token do GitHub
-restrito a este repositório e à permissão de Actions; a credencial expira em
-30/08/2027. O handle e a app password continuam exclusivamente nos Secrets
+restrito a este repositório e à permissão de Actions. O handle e a app password continuam exclusivamente nos Secrets
 `BSKY_HANDLE` e `BSKY_APP_PASSWORD` do GitHub. Nenhuma credencial fica no repositório
 ou nos arquivos publicados pelo GitHub Pages, e as execuções não podem se sobrepor.
 
-Na mesma execução, `auto-unfollow.mjs` remove no máximo 50 perfis que não seguem a
-conta de volta. Só entram perfis seguidos há pelo menos 7 dias, sempre do follow mais
-antigo em direção ao mais recente. Quando há registros de follow duplicados para a
-mesma pessoa, todos são removidos na mesma passagem. O perfil só é contabilizado e
-gravado no histórico depois que a API confirma que ele deixou de ser seguido. Um estado
-persistente no cache do Actions impede que o follow automático volte a adicionar quem
-acabou de ser removido. O estado contém somente DIDs, handles e datas — nunca tokens ou
-app passwords. Os logs públicos do Actions mostram somente contagens agregadas; handles
-e DIDs processados não são publicados.
+Na mesma execução, `auto-unfollow.mjs` remove no máximo 50 perfis, sempre do follow mais
+antigo em direção ao mais recente. Entram três motivos independentes: não seguir a conta
+de volta, conteúdo adulto ou sinal forte de que o perfil não é brasileiro. A carência
+para reciprocidade pode ser ajustada com `AUTO_UNFOLLOW_GRACE_DAYS`; os dois últimos
+motivos continuam valendo imediatamente para quem segue de volta.
+
+A opção `AUTO_UNFOLLOW_CLEAN_STALE_RECORDS` também remove gradualmente registros antigos
+de contas apagadas, suspensas ou que já não aparecem como relação ativa no Bluesky. Na
+conta principal, a limpeza está habilitada, o filtro de equilíbrio está em 20% e há três
+dias de carência antes do unfollow por falta de reciprocidade.
+
+Também são revisados até 100 perfis por rodada; perfis sem post ou repost nos últimos
+365 dias entram na fila com a razão `inactive_1y`.
+
+Como o Bluesky não fornece nacionalidade, a classificação é conservadora: usa sinais
+explícitos no perfil, domínio e idioma regional dos posts, como `🇵🇹`, Portugal, `.pt` ou
+`pt-PT`. Um sinal brasileiro, como `🇧🇷`, Brasil, `.br` ou `pt-BR`, tem prioridade. Perfis
+sem evidência suficiente ficam como desconhecidos e são mantidos. A cada rodada são
+revisados até 100 follows ainda não avaliados, começando pelos mais antigos; perfis
+mantidos voltam a ser verificados após 30 dias. Esses limites podem ser ajustados com
+`AUTO_UNFOLLOW_POLICY_SCAN_LIMIT` e `AUTO_UNFOLLOW_POLICY_REVIEW_DAYS`.
+
+O workflow também aceita uma segunda conta isolada por meio dos secrets
+`SECONDARY_BSKY_HANDLE` e `SECONDARY_BSKY_APP_PASSWORD`. Ela mantém estado próprio e,
+na configuração atual, procura publicações em português sobre filmes, cinema e séries,
+com diferença máxima de 20% entre seguidores e seguindo. Se esses secrets estiverem
+ausentes, a segunda rotina é ignorada sem afetar a conta principal.
+
+Quando há registros de follow duplicados para a mesma pessoa, todos são removidos na
+mesma passagem. O perfil só é contabilizado e gravado no histórico depois que a API
+confirma que ele deixou de ser seguido. Um estado persistente no cache do Actions impede
+que o follow automático volte a adicionar quem acabou de ser removido e registra o
+progresso da revisão. O estado contém somente DIDs, handles, datas e classificações —
+nunca tokens ou app passwords. Os logs públicos do Actions mostram somente contagens
+agregadas; handles e DIDs processados não são publicados.
 
 ## Rodar localmente
 
