@@ -87,12 +87,28 @@ jobs:
         with:
           node-version: 24
       - name: Restaurar estado da segunda conta
+        id: restore-state
         if: steps.account.outputs.configured == 'true'
         uses: actions/cache/restore@v5
         with:
           path: .auto-follow-state-secondary.json
           key: auto-follow-state-secondary-${{ github.run_id }}
           restore-keys: auto-follow-state-secondary-
+      - name: Importar estado inicial da segunda conta
+        if: steps.account.outputs.configured == 'true' && steps.restore-state.outputs.cache-matched-key == ''
+        env:
+          MIGRATED_STATE: ${{ secrets.SECONDARY_AUTO_FOLLOW_STATE_GZIP_B64 }}
+          ALLOW_EMPTY_STATE: ${{ vars.SECONDARY_ALLOW_EMPTY_STATE }}
+        run: |
+          if [ -n "$MIGRATED_STATE" ]; then
+            printf '%s' "$MIGRATED_STATE" | base64 --decode | gzip --decompress > .auto-follow-state-secondary.json
+            test -s .auto-follow-state-secondary.json
+          elif [ "$ALLOW_EMPTY_STATE" = "true" ]; then
+            echo "Estado vazio autorizado por SECONDARY_ALLOW_EMPTY_STATE; remova a variável após esta execução."
+          else
+            echo "Estado da segunda conta ausente; execução interrompida para evitar refollows."
+            exit 1
+          fi
       - name: Remover perfis da segunda conta
         if: steps.account.outputs.configured == 'true'
         run: node auto-unfollow.mjs --execute
@@ -100,6 +116,7 @@ jobs:
           BSKY_HANDLE: ${{ secrets.SECONDARY_BSKY_HANDLE }}
           BSKY_APP_PASSWORD: ${{ secrets.SECONDARY_BSKY_APP_PASSWORD }}
           AUTO_FOLLOW_STATE_FILE: .auto-follow-state-secondary.json
+          AUTO_UNFOLLOW_GRACE_DAYS: 3
       - name: Buscar e seguir fãs de filmes e séries
         if: steps.account.outputs.configured == 'true'
         run: node auto-follow.mjs --execute
@@ -111,7 +128,7 @@ jobs:
           AUTO_FOLLOW_SEARCH_TERMS: filme,filmes,cinema,série,séries,seriado,seriados
           AUTO_FOLLOW_MAX_PAGES: 5
       - name: Salvar estado da segunda conta
-        if: always() && steps.account.outputs.configured == 'true'
+        if: always() && steps.account.outputs.configured == 'true' && hashFiles('.auto-follow-state-secondary.json') != ''
         uses: actions/cache/save@v5
         with:
           path: .auto-follow-state-secondary.json

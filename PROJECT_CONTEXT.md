@@ -42,7 +42,12 @@ interface é `index.html`.
 - Os termos atuais são: `filme`, `filmes`, `cinema`, `série`, `séries`,
   `seriado`, `seriados`.
 - A busca usa publicações em português e até 5 páginas por termo.
+- Há **3 dias de carência** antes de remover alguém que não segue de volta.
 - O estado da segunda conta é separado em `.auto-follow-state-secondary.json`.
+- Se o cache desse estado não existir, a rotina da segunda conta é interrompida
+  (sem afetar a principal). Ela retoma com o secret
+  `SECONDARY_AUTO_FOLLOW_STATE_GZIP_B64` ou, só para começar do zero, com a
+  variável de repositório `SECONDARY_ALLOW_EMPTY_STATE=true` por uma execução.
 
 ## 3. Fluxo de execução por hora
 
@@ -133,7 +138,7 @@ Parâmetros padrão do código:
 
 | Variável | Padrão |
 |---|---:|
-| `AUTO_UNFOLLOW_MAX_UNFOLLOWS` | `50` |
+| `AUTO_UNFOLLOW_MAX_UNFOLLOWS` (antigo: `AUTO_UNFOLLOW_MAX`) | `50` |
 | `AUTO_UNFOLLOW_MAX_PAGES` | `300` |
 | `AUTO_UNFOLLOW_POLICY_SCAN_LIMIT` | `100` |
 | `AUTO_UNFOLLOW_POLICY_REVIEW_DAYS` | `30` |

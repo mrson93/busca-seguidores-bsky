@@ -86,8 +86,15 @@ mantidos voltam a ser verificados após 30 dias. Esses limites podem ser ajustad
 O workflow também aceita uma segunda conta isolada por meio dos secrets
 `SECONDARY_BSKY_HANDLE` e `SECONDARY_BSKY_APP_PASSWORD`. Ela mantém estado próprio e,
 na configuração atual, procura publicações em português sobre filmes, cinema e séries,
-com diferença máxima de 20% entre seguidores e seguindo. Se esses secrets estiverem
+com diferença máxima de 20% entre seguidores e seguindo, e também respeita três dias
+de carência antes do unfollow por falta de reciprocidade. Se esses secrets estiverem
 ausentes, a segunda rotina é ignorada sem afetar a conta principal.
+
+Se o cache da segunda conta sumir, a rotina dela é interrompida para não seguir de novo
+perfis já removidos. Para restaurar, cadastre o estado no secret
+`SECONDARY_AUTO_FOLLOW_STATE_GZIP_B64` (gzip + base64, como na conta principal). Só para
+começar do zero, defina a variável do repositório `SECONDARY_ALLOW_EMPTY_STATE=true`
+por uma execução e remova-a em seguida.
 
 Quando há registros de follow duplicados para a mesma pessoa, todos são removidos na
 mesma passagem. O perfil só é contabilizado e gravado no histórico depois que a API

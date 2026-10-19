@@ -419,7 +419,9 @@ async function main() {
     account,
     execute: process.argv.includes('--execute'),
     graceDays: process.env.AUTO_UNFOLLOW_GRACE_DAYS,
-    maxUnfollows: process.env.AUTO_UNFOLLOW_MAX,
+    // AUTO_UNFOLLOW_MAX é o nome antigo, mantido por compatibilidade.
+    maxUnfollows: process.env.AUTO_UNFOLLOW_MAX_UNFOLLOWS ?? process.env.AUTO_UNFOLLOW_MAX,
+    maxPages: process.env.AUTO_UNFOLLOW_MAX_PAGES,
     policyScanLimit: process.env.AUTO_UNFOLLOW_POLICY_SCAN_LIMIT,
     policyReviewDays: process.env.AUTO_UNFOLLOW_POLICY_REVIEW_DAYS,
     cleanStaleRecords: process.env.AUTO_UNFOLLOW_CLEAN_STALE_RECORDS,
