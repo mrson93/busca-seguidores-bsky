@@ -87,7 +87,8 @@ O workflow também aceita uma segunda conta isolada por meio dos secrets
 `SECONDARY_BSKY_HANDLE` e `SECONDARY_BSKY_APP_PASSWORD`. Ela mantém estado próprio e,
 na configuração atual, procura publicações em português sobre filmes, cinema e séries,
 com diferença máxima de 20% entre seguidores e seguindo, e também respeita três dias
-de carência antes do unfollow por falta de reciprocidade. Se esses secrets estiverem
+de carência antes do unfollow por falta de reciprocidade e limpa registros antigos de
+follow, como a conta principal. Se esses secrets estiverem
 ausentes, a segunda rotina é ignorada sem afetar a conta principal.
 
 Se o cache da segunda conta sumir, a rotina dela é interrompida para não seguir de novo

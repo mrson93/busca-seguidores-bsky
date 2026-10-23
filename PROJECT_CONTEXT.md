@@ -43,6 +43,7 @@ interface é `index.html`.
   `seriado`, `seriados`.
 - A busca usa publicações em português e até 5 páginas por termo.
 - Há **3 dias de carência** antes de remover alguém que não segue de volta.
+- A limpeza de registros antigos (`stale_follow_record`) está habilitada.
 - O estado da segunda conta é separado em `.auto-follow-state-secondary.json`.
 - Se o cache desse estado não existir, a rotina da segunda conta é interrompida
   (sem afetar a principal). Ela retoma com o secret

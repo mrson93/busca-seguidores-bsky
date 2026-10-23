@@ -117,6 +117,7 @@ jobs:
           BSKY_APP_PASSWORD: ${{ secrets.SECONDARY_BSKY_APP_PASSWORD }}
           AUTO_FOLLOW_STATE_FILE: .auto-follow-state-secondary.json
           AUTO_UNFOLLOW_GRACE_DAYS: 3
+          AUTO_UNFOLLOW_CLEAN_STALE_RECORDS: true
       - name: Buscar e seguir fãs de filmes e séries
         if: steps.account.outputs.configured == 'true'
         run: node auto-follow.mjs --execute
