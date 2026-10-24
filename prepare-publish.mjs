@@ -7,7 +7,8 @@ const destino = join(raiz, 'dist');
 
 rmSync(destino, { recursive: true, force: true });
 mkdirSync(destino);
-cpSync(join(raiz, 'index.html'), join(destino, 'index.html'));
+for (const arquivo of ['index.html', 'x-assistente.html', 'x-assistente.js'])
+  cpSync(join(raiz, arquivo), join(destino, arquivo));
 writeFileSync(join(destino, 'config.js'), [
   '// Arquivo público e intencionalmente vazio.',
   '// Nunca substitua pelo config.js local, que pode conter app passwords.',

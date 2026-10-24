@@ -210,25 +210,25 @@ password do Bluesky. O arquivo é ignorado pelo Git. A sessão da página fica n
 Para publicar, execute `node prepare-publish.mjs` e envie somente o conteúdo de
 `dist/`. Nunca publique `config.js` com credenciais.
 
-## 9. X — plano de assistente manual (ainda não implementado)
+## 9. X — assistente manual (`x-assistente.html`)
 
-Foi avaliada a possibilidade de uma rotina equivalente para o X usando a API oficial.
-O desenho aprovado é **assistência manual**, sem follow/unfollow automático:
+Para o X não há follow automático, nem pela API nem por automação de navegador:
+as regras do X proíbem isso e a conta corre risco de suspensão. A página
+`x-assistente.html` só ajuda a organizar o trabalho manual:
 
-- pesquisar posts recentes por termos, hashtags, idioma e outros operadores;
-- trazer autor, avatar, bio, seguidores, seguindo e data do post;
-- aplicar filtros e ordenação parecidos com os do Bluesky;
-- mostrar um botão `Abrir no X / Seguir manualmente` ao lado do perfil;
-- o botão abre o perfil em `x.com/usuario`; a confirmação do follow é feita pelo
-  usuário no próprio X.
+- abre a busca de posts recentes no próprio site do X (com `lang:pt` opcional);
+- o usuário copia o texto da página do X (Cmd/Ctrl+A, Cmd/Ctrl+C) e cola na página;
+- os autores (linhas `@handle` isoladas) e links `x.com/usuario` viram uma fila;
+  menções dentro dos posts só entram se o usuário marcar a opção;
+- cada perfil tem `Abrir no X`, `Segui ✓` e `Pular`; o follow é sempre feito pelo
+  usuário no próprio X;
+- quem já foi seguido ou pulado não volta para a fila; há contador e limite diário
+  (padrão 40) como lembrete, e `Desfazer` no histórico;
+- o estado fica no `localStorage` do navegador (`xAssistente.v1`), com backup e
+  restauração em JSON. Não há servidor, senha nem token.
 
-A busca recente do X cobre os últimos 7 dias. Histórico completo depende do nível de
-  acesso contratado. Para pesquisa pública será necessário um token de leitura de um
-  aplicativo do X; para exibir se a conta já segue alguém, será necessária autenticação
-  adicional da conta. Não colocar tokens no chat nem no repositório.
-
-O Buffer continua relacionado a publicação/agendamento e não substitui a API do X
-para pesquisa ou relacionamentos.
+A lógica testável fica em `x-assistente.js` (script clássico, funciona abrindo o HTML
+direto do disco) e é coberta por `test-x-assistente.mjs`.
 
 ## 10. Testes e comandos úteis
 
@@ -236,6 +236,7 @@ para pesquisa ou relacionamentos.
 npm test                         # teste de boot da interface
 npm run test:auto-follow         # testes do follow
 npm run test:auto-unfollow       # testes do unfollow
+npm run test:x-assistente        # testes do assistente do X
 pnpm test:scheduler              # testes do Worker
 pnpm typecheck:scheduler         # checagem TypeScript do Worker
 npm run test:browser             # smoke test opcional em Chromium
@@ -250,6 +251,7 @@ são de desenvolvimento; o pacote publicado continua estático.
 | Arquivo | Responsabilidade |
 |---|---|
 | `index.html` | interface web e chamadas da API do Bluesky |
+| `x-assistente.html` / `x-assistente.js` | fila manual de follows no X |
 | `auto-follow.mjs` | descoberta, filtros e follow automático |
 | `auto-unfollow.mjs` | análise, fila e remoção de follows |
 | `profile-policy.mjs` | filtros de conteúdo adulto e país |
@@ -281,4 +283,4 @@ são de desenvolvimento; o pacote publicado continua estático.
 6. Ao alterar a rotina horária, verificar simultaneamente o workflow, o cron do
    Worker, o grupo de concorrência e os testes.
 7. Qualquer integração com o X deve permanecer manual-assistida e respeitar as
-   regras atuais da plataforma.
+   regras atuais da plataforma: nada de clicar em seguir por automação.

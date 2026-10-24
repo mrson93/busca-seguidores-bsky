@@ -105,6 +105,18 @@ progresso da revisão. O estado contém somente DIDs, handles, datas e classific
 nunca tokens ou app passwords. Os logs públicos do Actions mostram somente contagens
 agregadas; handles e DIDs processados não são publicados.
 
+## Assistente manual para o X
+
+`x-assistente.html` ajuda a seguir perfis no X **sem automação**: abre a busca de posts
+recentes no próprio X, transforma o texto copiado da página (Cmd/Ctrl+A, Cmd/Ctrl+C) numa
+fila de perfis e, para cada um, oferece `Abrir no X`, `Segui ✓` e `Pular`. O follow é
+sempre feito por você no X — a página não acessa o X, não pede senha nem token. Quem já
+foi seguido ou pulado não volta para a fila; há contador com limite diário e backup em
+JSON. O estado fica só no navegador. Abra o arquivo direto no navegador para usar.
+
+O X proíbe seguir em massa por automação e costuma suspender contas que fazem isso,
+por isso esta parte do projeto continua manual de propósito.
+
 ## Rodar localmente
 
 Abra o `index.html` no navegador. Para entrar automaticamente:
@@ -129,7 +141,8 @@ Gere sempre o pacote público limpo:
 node prepare-publish.mjs
 ```
 
-O comando recria `dist/` apenas com o `index.html` e um `config.js` público vazio.
+O comando recria `dist/` apenas com o `index.html`, o assistente do X
+(`x-assistente.html` e `x-assistente.js`) e um `config.js` público vazio.
 Confira a mensagem do comando e envie **somente o conteúdo de `dist/`**. Nunca arraste
 a pasta inteira do projeto.
 
@@ -146,6 +159,8 @@ node test-boot.mjs
 
 Roda o script real do `index.html` num DOM mínimo, com a rede simulada. Aceita um fuso
 como argumento (`node test-boot.mjs Asia/Tokyo`), porque o filtro de data depende disso.
+
+A lógica do assistente do X tem testes próprios: `node test-x-assistente.mjs`.
 
 O agendador do Cloudflare tem testes e checagem de tipos próprios:
 

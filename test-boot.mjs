@@ -925,7 +925,7 @@ const SALVAS = {
 {
   const dist = join(import.meta.dirname, 'dist');
   await import('./prepare-publish.mjs?v=' + Math.random());
-  assert.deepEqual(readdirSync(dist).sort(), ['config.js', 'index.html']);
+  assert.deepEqual(readdirSync(dist).sort(), ['config.js', 'index.html', 'x-assistente.html', 'x-assistente.js']);
   const cfgPublica = readFileSync(join(dist, 'config.js'), 'utf8');
   assert.match(cfgPublica, /window\.BSKY = \[\];/);
   assert.ok(!/appPassword:\s*['"][^'"]+/.test(cfgPublica), 'nenhuma app password no pacote');

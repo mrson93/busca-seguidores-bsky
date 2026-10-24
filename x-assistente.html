@@ -1,0 +1,271 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Assistente de follow no X</title>
+<style>
+  [hidden] { display: none !important; }
+  body { font: 15px/1.4 system-ui, sans-serif; margin: 2rem auto; max-width: 60rem; padding: 0 1rem; background: #fff; color: #111; }
+  h1 { margin: 0 0 .25rem; font-size: 1.6rem; }
+  h2 { font-size: 1.1rem; margin: 1.75rem 0 .5rem; }
+  #intro, .ajuda { color: #444; max-width: 46rem; }
+  #intro { margin: 0 0 1.5rem; }
+  form, .linha { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; margin-bottom: .5rem; }
+  input, button, textarea { padding: .5rem; font: inherit; }
+  input[type=search] { flex: 1 1 18rem; }
+  input[type=number] { width: 5rem; }
+  textarea { width: 100%; box-sizing: border-box; min-height: 8rem; font: 13px/1.5 ui-monospace, Consolas, monospace; }
+  .aviso { background: #fffbe6; border: 1px solid #e8d98a; border-radius: 6px; padding: .75rem 1rem; margin: 0 0 1rem; max-width: 46rem; }
+  .aviso.limite { background: #fdecea; border-color: #e6a29b; }
+  #status, #resumoFila { color: #666; margin: .5rem 0; }
+  #contador { font-weight: 600; }
+  .rolagem { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { text-align: left; padding: .5rem; border-bottom: 1px solid #ddd; vertical-align: middle; }
+  td.acoes { display: flex; gap: .4rem; flex-wrap: wrap; }
+  tr.aberto { background: #f2f7ff; }
+  .seguido { color: #176c2c; }
+  .pulado { color: #777; }
+  #historicoBox summary { cursor: pointer; user-select: none; }
+  small { color: #666; }
+</style>
+
+<h1>Assistente de follow no X</h1>
+<p id="intro">
+  Organiza uma fila de perfis do X para você seguir <strong>manualmente</strong>. Esta página não acessa o X,
+  não usa sua senha e não clica em nada por você: ela só abre o perfil numa nova aba e guarda, neste
+  navegador, quem você já seguiu ou pulou, para não aparecer de novo.
+</p>
+<p class="aviso">
+  Siga num ritmo humano. O X restringe contas que seguem muita gente em pouco tempo; o limite diário abaixo
+  é só um lembrete, ajuste com cuidado.
+</p>
+
+<h2>1. Buscar no X</h2>
+<form id="busca">
+  <input type="search" id="termo" placeholder="termo ou hashtag (ex: promoção, #ofertas)" required>
+  <label><input type="checkbox" id="soPt" checked> só em português</label>
+  <button>Abrir busca no X</button>
+</form>
+<p class="ajuda">
+  Na aba que abrir, role a página para carregar mais posts. Depois selecione tudo (Cmd/Ctrl+A),
+  copie (Cmd/Ctrl+C) e cole no campo abaixo. Também dá para colar links de perfis ou uma lista de @.
+</p>
+
+<h2>2. Colar perfis</h2>
+<textarea id="colado" placeholder="cole aqui o texto copiado do X, links x.com/fulano ou @fulano um por linha"></textarea>
+<div class="linha">
+  <label><input type="checkbox" id="mencoes"> incluir menções dentro dos posts</label>
+  <button type="button" id="adicionar">Adicionar à fila</button>
+</div>
+<p id="status" role="status"></p>
+
+<h2>3. Fila</h2>
+<div class="linha">
+  <span id="contador"></span>
+  <label>limite diário <input type="number" id="limite" min="1" max="400"></label>
+  <label>meu @ <input id="eu" placeholder="seu @ no X" size="16"></label>
+</div>
+<p id="avisoLimite" class="aviso limite" hidden>
+  Você chegou ao limite diário que definiu. Melhor continuar amanhã.
+</p>
+<p id="resumoFila"></p>
+<div class="rolagem">
+  <table id="tabela" hidden>
+    <thead><tr><th>Perfil</th><th>Ações</th></tr></thead>
+    <tbody id="linhas"></tbody>
+  </table>
+</div>
+<div class="linha">
+  <button type="button" id="limparFila">Esvaziar fila</button>
+</div>
+
+<details id="historicoBox">
+  <summary>Histórico e backup</summary>
+  <p id="resumoHistorico" class="ajuda"></p>
+  <div class="rolagem">
+    <table>
+      <thead><tr><th>Perfil</th><th>Situação</th><th>Quando</th><th></th></tr></thead>
+      <tbody id="historico"></tbody>
+    </table>
+  </div>
+  <div class="linha">
+    <button type="button" id="exportar">Baixar backup (.json)</button>
+    <label>Restaurar backup <input type="file" id="importar" accept="application/json,.json"></label>
+  </div>
+  <p class="ajuda">
+    O histórico fica só neste navegador. Se limpar os dados do site ou trocar de navegador, ele some,
+    então baixe um backup de vez em quando.
+  </p>
+</details>
+
+<script src="x-assistente.js"></script>
+<script>
+const X = window.XAssistente;
+const CHAVE = 'xAssistente.v1';
+const $ = id => document.getElementById(id);
+
+const ler = () => {
+  try { return X.carregarEstado(localStorage.getItem(CHAVE)); } catch { return X.estadoVazio(); }
+};
+let estado = ler();
+let aberto = '';
+const salvar = () => {
+  try { localStorage.setItem(CHAVE, JSON.stringify(estado)); } catch { /* sem armazenamento: segue só em memória */ }
+};
+
+const botao = (texto, aoClicar, titulo) => {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.textContent = texto;
+  if (titulo) b.title = titulo;
+  b.onclick = aoClicar;
+  return b;
+};
+
+const linkPerfil = handle => {
+  const a = document.createElement('a');
+  a.href = X.urlPerfil(handle);
+  a.target = '_blank';
+  a.rel = 'noopener';
+  a.textContent = '@' + handle;
+  return a;
+};
+
+const abrir = handle => {
+  aberto = handle;
+  window.open(X.urlPerfil(handle), '_blank', 'noopener');
+  render();
+};
+
+const marcar = (handle, status) => {
+  X.marcar(estado, handle, status);
+  if (aberto === handle) aberto = '';
+  salvar();
+  render();
+};
+
+function render() {
+  const hoje = X.seguidosHoje(estado);
+  $('contador').textContent = `Hoje: ${hoje} de ${estado.limiteDiario} follows`;
+  $('avisoLimite').hidden = hoje < estado.limiteDiario;
+  $('limite').value = estado.limiteDiario;
+  if (document.activeElement !== $('eu')) $('eu').value = estado.eu ? '@' + estado.eu : '';
+
+  const linhas = $('linhas');
+  linhas.replaceChildren();
+  for (const handle of estado.fila) {
+    const tr = document.createElement('tr');
+    if (handle === aberto) tr.className = 'aberto';
+    const perfil = document.createElement('td');
+    perfil.append(linkPerfil(handle));
+    const acoes = document.createElement('td');
+    acoes.className = 'acoes';
+    acoes.append(
+      botao('Abrir no X', () => abrir(handle), 'abre o perfil numa nova aba para você seguir lá'),
+      botao('Segui ✓', () => marcar(handle, 'seguido')),
+      botao('Pular', () => marcar(handle, 'pulado'), 'não aparece mais na fila'),
+    );
+    tr.append(perfil, acoes);
+    linhas.append(tr);
+  }
+  $('tabela').hidden = estado.fila.length === 0;
+  $('resumoFila').textContent = estado.fila.length
+    ? `${estado.fila.length} perfil(s) na fila.`
+    : 'Fila vazia. Cole perfis no passo 2.';
+
+  const itens = Object.entries(estado.perfis).sort((a, b) => b[1].em.localeCompare(a[1].em));
+  const seguidos = itens.filter(([, item]) => item.status === 'seguido').length;
+  $('resumoHistorico').textContent =
+    `${seguidos} seguido(s) e ${itens.length - seguidos} pulado(s) no total. Mostrando os 100 mais recentes.`;
+  const historico = $('historico');
+  historico.replaceChildren();
+  for (const [handle, item] of itens.slice(0, 100)) {
+    const tr = document.createElement('tr');
+    const perfil = document.createElement('td');
+    perfil.append(linkPerfil(handle));
+    const situacao = document.createElement('td');
+    situacao.textContent = item.status === 'seguido' ? 'seguido' : 'pulado';
+    situacao.className = item.status;
+    const quando = document.createElement('td');
+    quando.textContent = new Date(item.em).toLocaleString('pt-BR');
+    const acao = document.createElement('td');
+    acao.append(botao('Desfazer', () => { X.desfazer(estado, handle); salvar(); render(); },
+      'volta o perfil para o início da fila'));
+    tr.append(perfil, situacao, quando, acao);
+    historico.append(tr);
+  }
+}
+
+$('busca').onsubmit = evento => {
+  evento.preventDefault();
+  window.open(X.urlBusca($('termo').value, { soPortugues: $('soPt').checked }), '_blank', 'noopener');
+};
+
+$('adicionar').onclick = () => {
+  const handles = X.extrairPerfis($('colado').value, { incluirMencoes: $('mencoes').checked });
+  if (!handles.length) {
+    $('status').textContent = 'Nenhum perfil encontrado no texto colado.';
+    return;
+  }
+  const r = X.adicionarNaFila(estado, handles);
+  salvar();
+  $('colado').value = '';
+  const partes = [`${r.novos} novo(s) na fila`];
+  if (r.jaVistos) partes.push(`${r.jaVistos} já seguido(s) ou pulado(s)`);
+  if (r.jaNaFila) partes.push(`${r.jaNaFila} já estava(m) na fila`);
+  if (r.propria) partes.push('sua própria conta ignorada');
+  $('status').textContent = partes.join(' · ') + '.';
+  render();
+};
+
+$('limite').onchange = () => {
+  const valor = Math.floor(Number($('limite').value));
+  if (valor > 0) estado.limiteDiario = valor;
+  salvar();
+  render();
+};
+
+$('eu').onchange = () => {
+  estado.eu = X.normalizar($('eu').value);
+  estado.fila = estado.fila.filter(handle => handle !== estado.eu);
+  salvar();
+  render();
+};
+
+$('limparFila').onclick = () => {
+  if (!estado.fila.length || !confirm(`Remover os ${estado.fila.length} perfis da fila? O histórico é mantido.`)) return;
+  estado.fila = [];
+  salvar();
+  render();
+};
+
+$('exportar').onclick = () => {
+  const blob = new Blob([JSON.stringify(estado, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `x-assistente-${new Date().toISOString().slice(0, 10)}.json`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+};
+
+$('importar').onchange = async () => {
+  const arquivo = $('importar').files[0];
+  if (!arquivo) return;
+  const novo = X.carregarEstado(await arquivo.text());
+  if (!confirm(`Restaurar backup com ${Object.keys(novo.perfis).length} perfis no histórico e ${novo.fila.length} na fila? O estado atual será substituído.`)) {
+    $('importar').value = '';
+    return;
+  }
+  estado = novo;
+  salvar();
+  $('importar').value = '';
+  render();
+};
+
+// Outra aba desta página mudou o estado: recarrega para não sobrescrever.
+window.addEventListener('storage', evento => {
+  if (evento.key === CHAVE) { estado = ler(); render(); }
+});
+
+render();
+</script>
