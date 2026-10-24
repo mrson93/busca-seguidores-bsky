@@ -13,11 +13,11 @@
   textarea { width: 100%; box-sizing: border-box; min-height: 7rem; font: 13px/1.5 ui-monospace, Consolas, monospace; }
   #status { color: #666; }
   ul { list-style: none; padding: 0; margin: 0; }
-  #lista li { border-bottom: 1px solid #ddd; }
-  #lista a { display: block; padding: .6rem .25rem; color: inherit; text-decoration: none; }
-  #lista a:hover { background: #f2f7ff; }
-  #lista strong { color: #1558b0; }
-  .bio { display: block; color: #555; font-size: .9em; }
+  .rolagem { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { text-align: left; padding: .5rem; border-bottom: 1px solid #ddd; vertical-align: top; }
+  td a { color: #1558b0; font-weight: 600; text-decoration: none; white-space: nowrap; }
+  td.bio { color: #555; font-size: .9em; min-width: 12rem; }
   details { margin-top: 1.5rem; color: #555; }
   summary { cursor: pointer; user-select: none; }
   #descartados li { padding: .25rem 0; }
@@ -42,7 +42,12 @@
   <span id="status" role="status"></span>
 </div>
 
-<ul id="lista"></ul>
+<div class="rolagem">
+  <table id="tabela" hidden>
+    <thead><tr><th>Perfil</th><th>Nome</th><th>Bio</th><th></th></tr></thead>
+    <tbody id="lista"></tbody>
+  </table>
+</div>
 
 <details id="descartadosBox" hidden>
   <summary id="descartadosTitulo"></summary>
@@ -88,30 +93,46 @@ $('filtrar').onclick = () => {
   const lista = $('lista');
   lista.replaceChildren();
   for (const perfil of aprovados) {
-    const li = document.createElement('li');
+    const tr = document.createElement('tr');
+    // Abriu no X: some da lista e não volta nas próximas buscas.
+    const marcarVisto = () => {
+      vistos.add(perfil.handle);
+      salvar();
+      tr.remove();
+      restantes--;
+      $('tabela').hidden = restantes === 0;
+      atualizarStatus(0);
+    };
+    const celula = (conteudo, classe) => {
+      const td = document.createElement('td');
+      if (classe) td.className = classe;
+      td.append(conteudo);
+      return td;
+    };
     const a = document.createElement('a');
     a.href = X.urlPerfil(perfil.handle);
     a.target = '_blank';
     a.rel = 'noopener';
-    const titulo = document.createElement('strong');
-    titulo.textContent = `@${perfil.handle}`;
-    const nome = document.createTextNode(` ${perfil.nome}${perfil.brasileiro ? ' 🇧🇷' : ''}`);
-    const bio = document.createElement('span');
-    bio.className = 'bio';
-    bio.textContent = perfil.bio.length > 160 ? perfil.bio.slice(0, 157) + '…' : perfil.bio;
-    a.append(titulo, nome, bio);
-    // Abriu no X: some da lista e não volta nas próximas buscas.
-    a.addEventListener('click', () => {
-      vistos.add(perfil.handle);
-      salvar();
-      li.remove();
-      restantes--;
-      atualizarStatus(0);
-    });
-    li.append(a);
-    lista.append(li);
+    a.textContent = `@${perfil.handle}`;
+    a.addEventListener('click', marcarVisto);
+    const abrir = document.createElement('button');
+    abrir.type = 'button';
+    abrir.textContent = 'Abrir';
+    abrir.onclick = () => {
+      window.open(X.urlPerfil(perfil.handle), '_blank', 'noopener');
+      marcarVisto();
+    };
+    const bio = perfil.bio.length > 120 ? perfil.bio.slice(0, 117) + '…' : perfil.bio;
+    tr.append(
+      celula(a),
+      celula(`${perfil.nome}${perfil.brasileiro ? ' 🇧🇷' : ''}`),
+      celula(bio, 'bio'),
+      celula(abrir),
+    );
+    lista.append(tr);
   }
   restantes = aprovados.length;
+  $('tabela').hidden = restantes === 0;
   atualizarStatus(jaVistos);
 
   $('descartadosBox').hidden = descartados.length === 0;
