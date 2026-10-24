@@ -4,268 +4,139 @@
 <title>Assistente de follow no X</title>
 <style>
   [hidden] { display: none !important; }
-  body { font: 15px/1.4 system-ui, sans-serif; margin: 2rem auto; max-width: 60rem; padding: 0 1rem; background: #fff; color: #111; }
+  body { font: 15px/1.4 system-ui, sans-serif; margin: 2rem auto; max-width: 46rem; padding: 0 1rem; background: #fff; color: #111; }
   h1 { margin: 0 0 .25rem; font-size: 1.6rem; }
-  h2 { font-size: 1.1rem; margin: 1.75rem 0 .5rem; }
-  #intro, .ajuda { color: #444; max-width: 46rem; }
-  #intro { margin: 0 0 1.5rem; }
-  form, .linha { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; margin-bottom: .5rem; }
+  p { color: #444; }
+  form, .linha { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; margin: .75rem 0; }
   input, button, textarea { padding: .5rem; font: inherit; }
-  input[type=search] { flex: 1 1 18rem; }
-  input[type=number] { width: 5rem; }
-  textarea { width: 100%; box-sizing: border-box; min-height: 8rem; font: 13px/1.5 ui-monospace, Consolas, monospace; }
-  .aviso { background: #fffbe6; border: 1px solid #e8d98a; border-radius: 6px; padding: .75rem 1rem; margin: 0 0 1rem; max-width: 46rem; }
-  .aviso.limite { background: #fdecea; border-color: #e6a29b; }
-  #status, #resumoFila { color: #666; margin: .5rem 0; }
-  #contador { font-weight: 600; }
-  .rolagem { overflow-x: auto; }
-  table { border-collapse: collapse; width: 100%; }
-  th, td { text-align: left; padding: .5rem; border-bottom: 1px solid #ddd; vertical-align: middle; }
-  td.acoes { display: flex; gap: .4rem; flex-wrap: wrap; }
-  tr.aberto { background: #f2f7ff; }
-  .seguido { color: #176c2c; }
-  .pulado { color: #777; }
-  #historicoBox summary { cursor: pointer; user-select: none; }
-  small { color: #666; }
+  input[type=search] { flex: 1 1 14rem; }
+  textarea { width: 100%; box-sizing: border-box; min-height: 7rem; font: 13px/1.5 ui-monospace, Consolas, monospace; }
+  #status { color: #666; }
+  ul { list-style: none; padding: 0; margin: 0; }
+  #lista li { border-bottom: 1px solid #ddd; }
+  #lista a { display: block; padding: .6rem .25rem; color: inherit; text-decoration: none; }
+  #lista a:hover { background: #f2f7ff; }
+  #lista strong { color: #1558b0; }
+  .bio { display: block; color: #555; font-size: .9em; }
+  details { margin-top: 1.5rem; color: #555; }
+  summary { cursor: pointer; user-select: none; }
+  #descartados li { padding: .25rem 0; }
+  button.link { background: none; border: none; color: #1558b0; padding: 0; cursor: pointer; text-decoration: underline; }
 </style>
 
 <h1>Assistente de follow no X</h1>
-<p id="intro">
-  Organiza uma fila de perfis do X para você seguir <strong>manualmente</strong>. Esta página não acessa o X,
-  não usa sua senha e não clica em nada por você: ela só abre o perfil numa nova aba e guarda, neste
-  navegador, quem você já seguiu ou pulou, para não aparecer de novo.
-</p>
-<p class="aviso">
-  Siga num ritmo humano. O X restringe contas que seguem muita gente em pouco tempo; o limite diário abaixo
-  é só um lembrete, ajuste com cuidado.
+<p>
+  Encontra no X perfis que passam nas regras do canaltabarato. Você clica e segue lá, no próprio X.
 </p>
 
-<h2>1. Buscar no X</h2>
 <form id="busca">
-  <input type="search" id="termo" placeholder="termo ou hashtag (ex: promoção, #ofertas)" required>
-  <label><input type="checkbox" id="soPt" checked> só em português</label>
-  <button>Abrir busca no X</button>
+  <input type="search" id="termo" placeholder="termo (ex: promoção, cupom, ofertas)" required>
+  <button>1. Buscar pessoas no X</button>
 </form>
-<p class="ajuda">
-  Na aba que abrir, role a página para carregar mais posts. Depois selecione tudo (Cmd/Ctrl+A),
-  copie (Cmd/Ctrl+C) e cole no campo abaixo. Também dá para colar links de perfis ou uma lista de @.
+<p>
+  2. Na aba que abrir, role para carregar mais perfis, selecione tudo (Cmd/Ctrl+A), copie (Cmd/Ctrl+C) e cole aqui:
 </p>
-
-<h2>2. Colar perfis</h2>
-<textarea id="colado" placeholder="cole aqui o texto copiado do X, links x.com/fulano ou @fulano um por linha"></textarea>
+<textarea id="colado" placeholder="cole aqui o texto da aba Pessoas do X"></textarea>
 <div class="linha">
-  <label><input type="checkbox" id="mencoes"> incluir menções dentro dos posts</label>
-  <button type="button" id="adicionar">Adicionar à fila</button>
-</div>
-<p id="status" role="status"></p>
-
-<h2>3. Fila</h2>
-<div class="linha">
-  <span id="contador"></span>
-  <label>limite diário <input type="number" id="limite" min="1" max="400"></label>
-  <label>meu @ <input id="eu" placeholder="seu @ no X" size="16"></label>
-</div>
-<p id="avisoLimite" class="aviso limite" hidden>
-  Você chegou ao limite diário que definiu. Melhor continuar amanhã.
-</p>
-<p id="resumoFila"></p>
-<div class="rolagem">
-  <table id="tabela" hidden>
-    <thead><tr><th>Perfil</th><th>Ações</th></tr></thead>
-    <tbody id="linhas"></tbody>
-  </table>
-</div>
-<div class="linha">
-  <button type="button" id="limparFila">Esvaziar fila</button>
+  <button type="button" id="filtrar">3. Filtrar</button>
+  <span id="status" role="status"></span>
 </div>
 
-<details id="historicoBox">
-  <summary>Histórico e backup</summary>
-  <p id="resumoHistorico" class="ajuda"></p>
-  <div class="rolagem">
-    <table>
-      <thead><tr><th>Perfil</th><th>Situação</th><th>Quando</th><th></th></tr></thead>
-      <tbody id="historico"></tbody>
-    </table>
-  </div>
-  <div class="linha">
-    <button type="button" id="exportar">Baixar backup (.json)</button>
-    <label>Restaurar backup <input type="file" id="importar" accept="application/json,.json"></label>
-  </div>
-  <p class="ajuda">
-    O histórico fica só neste navegador. Se limpar os dados do site ou trocar de navegador, ele some,
-    então baixe um backup de vez em quando.
-  </p>
+<ul id="lista"></ul>
+
+<details id="descartadosBox" hidden>
+  <summary id="descartadosTitulo"></summary>
+  <ul id="descartados"></ul>
 </details>
+
+<p style="margin-top:2rem">
+  <small>
+    Não dá para checar aqui a regra dos 20% entre seguidores e seguindo, porque o X não mostra esses
+    números na lista: confira ao abrir o perfil. Quem você abre não aparece de novo.
+    <button type="button" class="link" id="esquecer">Esquecer perfis já abertos</button>
+  </small>
+</p>
 
 <script src="x-assistente.js"></script>
 <script>
 const X = window.XAssistente;
-const CHAVE = 'xAssistente.v1';
+const CHAVE = 'xAssistente.vistos';
 const $ = id => document.getElementById(id);
 
-const ler = () => {
-  try { return X.carregarEstado(localStorage.getItem(CHAVE)); } catch { return X.estadoVazio(); }
+const lerVistos = () => {
+  try { return new Set(JSON.parse(localStorage.getItem(CHAVE) || '[]')); } catch { return new Set(); }
 };
-let estado = ler();
-let aberto = '';
+const vistos = lerVistos();
 const salvar = () => {
-  try { localStorage.setItem(CHAVE, JSON.stringify(estado)); } catch { /* sem armazenamento: segue só em memória */ }
+  try { localStorage.setItem(CHAVE, JSON.stringify([...vistos])); } catch { /* sem armazenamento: vale só nesta aba */ }
 };
 
-const botao = (texto, aoClicar, titulo) => {
-  const b = document.createElement('button');
-  b.type = 'button';
-  b.textContent = texto;
-  if (titulo) b.title = titulo;
-  b.onclick = aoClicar;
-  return b;
+let restantes = 0;
+const atualizarStatus = jaVistos => {
+  $('status').textContent = restantes
+    ? `${restantes} perfil(s) para seguir${jaVistos ? ` · ${jaVistos} já aberto(s) antes` : ''}.`
+    : 'Nenhum perfil novo passou nas regras.';
 };
-
-const linkPerfil = handle => {
-  const a = document.createElement('a');
-  a.href = X.urlPerfil(handle);
-  a.target = '_blank';
-  a.rel = 'noopener';
-  a.textContent = '@' + handle;
-  return a;
-};
-
-const abrir = handle => {
-  aberto = handle;
-  window.open(X.urlPerfil(handle), '_blank', 'noopener');
-  render();
-};
-
-const marcar = (handle, status) => {
-  X.marcar(estado, handle, status);
-  if (aberto === handle) aberto = '';
-  salvar();
-  render();
-};
-
-function render() {
-  const hoje = X.seguidosHoje(estado);
-  $('contador').textContent = `Hoje: ${hoje} de ${estado.limiteDiario} follows`;
-  $('avisoLimite').hidden = hoje < estado.limiteDiario;
-  $('limite').value = estado.limiteDiario;
-  if (document.activeElement !== $('eu')) $('eu').value = estado.eu ? '@' + estado.eu : '';
-
-  const linhas = $('linhas');
-  linhas.replaceChildren();
-  for (const handle of estado.fila) {
-    const tr = document.createElement('tr');
-    if (handle === aberto) tr.className = 'aberto';
-    const perfil = document.createElement('td');
-    perfil.append(linkPerfil(handle));
-    const acoes = document.createElement('td');
-    acoes.className = 'acoes';
-    acoes.append(
-      botao('Abrir no X', () => abrir(handle), 'abre o perfil numa nova aba para você seguir lá'),
-      botao('Segui ✓', () => marcar(handle, 'seguido')),
-      botao('Pular', () => marcar(handle, 'pulado'), 'não aparece mais na fila'),
-    );
-    tr.append(perfil, acoes);
-    linhas.append(tr);
-  }
-  $('tabela').hidden = estado.fila.length === 0;
-  $('resumoFila').textContent = estado.fila.length
-    ? `${estado.fila.length} perfil(s) na fila.`
-    : 'Fila vazia. Cole perfis no passo 2.';
-
-  const itens = Object.entries(estado.perfis).sort((a, b) => b[1].em.localeCompare(a[1].em));
-  const seguidos = itens.filter(([, item]) => item.status === 'seguido').length;
-  $('resumoHistorico').textContent =
-    `${seguidos} seguido(s) e ${itens.length - seguidos} pulado(s) no total. Mostrando os 100 mais recentes.`;
-  const historico = $('historico');
-  historico.replaceChildren();
-  for (const [handle, item] of itens.slice(0, 100)) {
-    const tr = document.createElement('tr');
-    const perfil = document.createElement('td');
-    perfil.append(linkPerfil(handle));
-    const situacao = document.createElement('td');
-    situacao.textContent = item.status === 'seguido' ? 'seguido' : 'pulado';
-    situacao.className = item.status;
-    const quando = document.createElement('td');
-    quando.textContent = new Date(item.em).toLocaleString('pt-BR');
-    const acao = document.createElement('td');
-    acao.append(botao('Desfazer', () => { X.desfazer(estado, handle); salvar(); render(); },
-      'volta o perfil para o início da fila'));
-    tr.append(perfil, situacao, quando, acao);
-    historico.append(tr);
-  }
-}
 
 $('busca').onsubmit = evento => {
   evento.preventDefault();
-  window.open(X.urlBusca($('termo').value, { soPortugues: $('soPt').checked }), '_blank', 'noopener');
+  window.open(X.urlBuscaPessoas($('termo').value), '_blank', 'noopener');
 };
 
-$('adicionar').onclick = () => {
-  const handles = X.extrairPerfis($('colado').value, { incluirMencoes: $('mencoes').checked });
-  if (!handles.length) {
-    $('status').textContent = 'Nenhum perfil encontrado no texto colado.';
-    return;
+$('filtrar').onclick = () => {
+  const { aprovados, descartados, jaVistos } = X.filtrar($('colado').value, { vistos });
+  const lista = $('lista');
+  lista.replaceChildren();
+  for (const perfil of aprovados) {
+    const li = document.createElement('li');
+    const a = document.createElement('a');
+    a.href = X.urlPerfil(perfil.handle);
+    a.target = '_blank';
+    a.rel = 'noopener';
+    const titulo = document.createElement('strong');
+    titulo.textContent = `@${perfil.handle}`;
+    const nome = document.createTextNode(` ${perfil.nome}${perfil.brasileiro ? ' 🇧🇷' : ''}`);
+    const bio = document.createElement('span');
+    bio.className = 'bio';
+    bio.textContent = perfil.bio.length > 160 ? perfil.bio.slice(0, 157) + '…' : perfil.bio;
+    a.append(titulo, nome, bio);
+    // Abriu no X: some da lista e não volta nas próximas buscas.
+    a.addEventListener('click', () => {
+      vistos.add(perfil.handle);
+      salvar();
+      li.remove();
+      restantes--;
+      atualizarStatus(0);
+    });
+    li.append(a);
+    lista.append(li);
   }
-  const r = X.adicionarNaFila(estado, handles);
-  salvar();
+  restantes = aprovados.length;
+  atualizarStatus(jaVistos);
+
+  $('descartadosBox').hidden = descartados.length === 0;
+  $('descartadosTitulo').textContent = `${descartados.length} descartado(s) pelas regras`;
+  $('descartados').replaceChildren(...descartados.map(perfil => {
+    const li = document.createElement('li');
+    li.textContent = `@${perfil.handle} — ${perfil.motivo}`;
+    return li;
+  }));
   $('colado').value = '';
-  const partes = [`${r.novos} novo(s) na fila`];
-  if (r.jaVistos) partes.push(`${r.jaVistos} já seguido(s) ou pulado(s)`);
-  if (r.jaNaFila) partes.push(`${r.jaNaFila} já estava(m) na fila`);
-  if (r.propria) partes.push('sua própria conta ignorada');
-  $('status').textContent = partes.join(' · ') + '.';
-  render();
 };
 
-$('limite').onchange = () => {
-  const valor = Math.floor(Number($('limite').value));
-  if (valor > 0) estado.limiteDiario = valor;
+$('esquecer').onclick = () => {
+  if (!vistos.size || !confirm(`Esquecer ${vistos.size} perfil(s) já aberto(s)? Eles poderão aparecer de novo.`)) return;
+  vistos.clear();
   salvar();
-  render();
 };
 
-$('eu').onchange = () => {
-  estado.eu = X.normalizar($('eu').value);
-  estado.fila = estado.fila.filter(handle => handle !== estado.eu);
-  salvar();
-  render();
-};
-
-$('limparFila').onclick = () => {
-  if (!estado.fila.length || !confirm(`Remover os ${estado.fila.length} perfis da fila? O histórico é mantido.`)) return;
-  estado.fila = [];
-  salvar();
-  render();
-};
-
-$('exportar').onclick = () => {
-  const blob = new Blob([JSON.stringify(estado, null, 2)], { type: 'application/json' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `x-assistente-${new Date().toISOString().slice(0, 10)}.json`;
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-};
-
-$('importar').onchange = async () => {
-  const arquivo = $('importar').files[0];
-  if (!arquivo) return;
-  const novo = X.carregarEstado(await arquivo.text());
-  if (!confirm(`Restaurar backup com ${Object.keys(novo.perfis).length} perfis no histórico e ${novo.fila.length} na fila? O estado atual será substituído.`)) {
-    $('importar').value = '';
-    return;
+// Versão anterior desta página guardava outro formato; aproveita quem já foi visto.
+try {
+  const antigo = JSON.parse(localStorage.getItem('xAssistente.v1') || 'null');
+  if (antigo?.perfis) {
+    Object.keys(antigo.perfis).forEach(handle => vistos.add(handle));
+    salvar();
+    localStorage.removeItem('xAssistente.v1');
   }
-  estado = novo;
-  salvar();
-  $('importar').value = '';
-  render();
-};
-
-// Outra aba desta página mudou o estado: recarrega para não sobrescrever.
-window.addEventListener('storage', evento => {
-  if (evento.key === CHAVE) { estado = ler(); render(); }
-});
-
-render();
+} catch { /* ignora */ }
 </script>

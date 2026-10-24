@@ -214,18 +214,21 @@ Para publicar, execute `node prepare-publish.mjs` e envie somente o conteúdo de
 
 Para o X não há follow automático, nem pela API nem por automação de navegador:
 as regras do X proíbem isso e a conta corre risco de suspensão. A página
-`x-assistente.html` só ajuda a organizar o trabalho manual:
+`x-assistente.html` só monta a lista para o usuário clicar:
 
-- abre a busca de posts recentes no próprio site do X (com `lang:pt` opcional);
-- o usuário copia o texto da página do X (Cmd/Ctrl+A, Cmd/Ctrl+C) e cola na página;
-- os autores (linhas `@handle` isoladas) e links `x.com/usuario` viram uma fila;
-  menções dentro dos posts só entram se o usuário marcar a opção;
-- cada perfil tem `Abrir no X`, `Segui ✓` e `Pular`; o follow é sempre feito pelo
-  usuário no próprio X;
-- quem já foi seguido ou pulado não volta para a fila; há contador e limite diário
-  (padrão 40) como lembrete, e `Desfazer` no histórico;
-- o estado fica no `localStorage` do navegador (`xAssistente.v1`), com backup e
-  restauração em JSON. Não há servidor, senha nem token.
+1. abre a aba **Pessoas** de uma busca no próprio X;
+2. o usuário copia a página (Cmd/Ctrl+A, Cmd/Ctrl+C) e cola;
+3. a página aplica as regras do canaltabarato que dá para checar pelo texto
+   (nome, @ e bio) e lista quem passou, com brasileiros (🇧🇷) primeiro.
+
+Regras aplicadas: descarta quem você já segue, conteúdo adulto e sinal de outro país
+lusófono, com as mesmas expressões de `profile-policy.mjs` (o teste compara as duas).
+A regra dos 20% entre seguidores e seguindo **não** é aplicada, porque o X não mostra
+esses números na lista; o usuário confere ao abrir o perfil.
+
+Clicar num perfil abre `x.com/usuario` numa nova aba e o marca como visto, para não
+voltar nas próximas buscas. A lista de vistos fica no `localStorage`
+(`xAssistente.vistos`). Não há servidor, senha nem token.
 
 A lógica testável fica em `x-assistente.js` (script clássico, funciona abrindo o HTML
 direto do disco) e é coberta por `test-x-assistente.mjs`.
@@ -251,7 +254,7 @@ são de desenvolvimento; o pacote publicado continua estático.
 | Arquivo | Responsabilidade |
 |---|---|
 | `index.html` | interface web e chamadas da API do Bluesky |
-| `x-assistente.html` / `x-assistente.js` | fila manual de follows no X |
+| `x-assistente.html` / `x-assistente.js` | lista de perfis do X para seguir manualmente |
 | `auto-follow.mjs` | descoberta, filtros e follow automático |
 | `auto-unfollow.mjs` | análise, fila e remoção de follows |
 | `profile-policy.mjs` | filtros de conteúdo adulto e país |

@@ -107,12 +107,14 @@ agregadas; handles e DIDs processados não são publicados.
 
 ## Assistente manual para o X
 
-`x-assistente.html` ajuda a seguir perfis no X **sem automação**: abre a busca de posts
-recentes no próprio X, transforma o texto copiado da página (Cmd/Ctrl+A, Cmd/Ctrl+C) numa
-fila de perfis e, para cada um, oferece `Abrir no X`, `Segui ✓` e `Pular`. O follow é
-sempre feito por você no X — a página não acessa o X, não pede senha nem token. Quem já
-foi seguido ou pulado não volta para a fila; há contador com limite diário e backup em
-JSON. O estado fica só no navegador. Abra o arquivo direto no navegador para usar.
+`x-assistente.html` monta uma lista de perfis do X que passam nas regras do
+canaltabarato, para você seguir **clicando no próprio X**. Busque um termo, copie a aba
+Pessoas do X (Cmd/Ctrl+A, Cmd/Ctrl+C), cole e clique em Filtrar. A página descarta quem
+você já segue, conteúdo adulto e perfis que não parecem brasileiros, e mostra os
+brasileiros primeiro. A regra dos 20% entre seguidores e seguindo fica para você conferir
+ao abrir o perfil, porque o X não mostra esses números na lista. Quem você abre não volta
+na próxima busca. A página não acessa o X nem pede senha ou token; abra o arquivo direto
+no navegador.
 
 O X proíbe seguir em massa por automação e costuma suspender contas que fazem isso,
 por isso esta parte do projeto continua manual de propósito.
