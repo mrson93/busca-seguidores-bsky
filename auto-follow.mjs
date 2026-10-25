@@ -10,7 +10,7 @@ const HOST = 'https://bsky.social/xrpc/';
 const ROOT = fileURLToPath(new URL('.', import.meta.url));
 const HISTORY = resolve(ROOT, 'auto-follow-history.jsonl');
 const STATE = resolve(ROOT, '.auto-follow-state.json');
-const DEFAULTS = { windowMinutes: 60, ratioPct: 20, maxFollows: 30, maxPages: 20 };
+const DEFAULTS = { windowMinutes: 60, ratioPct: 20, maxFollows: 60, maxPages: 20 };
 const WAIT = { min: 10000, max: 30000 };
 
 const positive = (value, fallback) => {
@@ -149,7 +149,7 @@ export async function runAutomation({
 
   windowMinutes = positive(windowMinutes, DEFAULTS.windowMinutes);
   ratioPct = positive(ratioPct, DEFAULTS.ratioPct);
-  maxFollows = Math.min(50, Math.floor(positive(maxFollows, DEFAULTS.maxFollows)));
+  maxFollows = Math.min(100, Math.floor(positive(maxFollows, DEFAULTS.maxFollows)));
   maxPages = Math.floor(positive(maxPages, DEFAULTS.maxPages));
   searchTerms = normalizeSearchTerms(searchTerms);
 

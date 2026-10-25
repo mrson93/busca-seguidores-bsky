@@ -20,7 +20,7 @@ e deixar de seguir na própria lista, individualmente ou em massa.
 
 O `auto-follow.mjs` procura posts marcados como português nos últimos 60 minutos,
 mantém apenas perfis cujos seguidores estejam dentro de 20% da quantidade de contas
-que seguem e limita cada execução a 30 follows. A própria conta, perfis já seguidos e
+que seguem e limita cada execução a 60 follows. A própria conta, perfis já seguidos e
 perfis bloqueados ficam de fora. Entre cada follow há uma pausa aleatória de 10 a 30
 segundos para reduzir o risco de limite da API. A busca percorre as páginas até chegar
 ao início da janela de 60 minutos, com um teto de segurança de 20 páginas.

@@ -78,8 +78,8 @@ Comportamento padrão do código:
 - consolida autores repetidos e ordena pelo post mais recente;
 - exclui a própria conta, perfis já seguidos, bloqueados e bloqueadores;
 - aceita apenas perfis dentro da proporção configurada entre seguidores e seguindo;
-- limita cada execução a no máximo 50 follows (o workflow não altera o limite
-  padrão de 30);
+- segue até 60 perfis por execução (padrão do código, usado pelas duas contas;
+  a trava máxima é 100);
 - espera aleatoriamente de 10 a 30 segundos entre follows;
 - verifica conteúdo adulto e sinais fortes de país antes de seguir;
 - se a verificação falhar, o perfil é rejeitado (fail closed);
@@ -92,7 +92,7 @@ Variáveis disponíveis:
 | `AUTO_FOLLOW_HANDLE` | primeira conta | escolhe uma conta local específica |
 | `AUTO_FOLLOW_WINDOW_MINUTES` | `60` | janela de busca |
 | `AUTO_FOLLOW_RATIO_PCT` | `20` | diferença máxima seguidores/seguindo |
-| `AUTO_FOLLOW_MAX_FOLLOWS` | `30` | limite de follows |
+| `AUTO_FOLLOW_MAX_FOLLOWS` | `60` | limite de follows (máximo 100) |
 | `AUTO_FOLLOW_MAX_PAGES` | `20` | limite de páginas |
 | `AUTO_FOLLOW_SEARCH_TERMS` | vazio | termos separados por vírgula |
 | `AUTO_FOLLOW_STATE_FILE` | `.auto-follow-state.json` | arquivo de estado |

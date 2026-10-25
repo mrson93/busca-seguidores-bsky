@@ -65,7 +65,7 @@ const now = new Date('2026-08-30T13:00:00Z');
   const result = await runAutomation({ account, now, fetchFn: api.fetchFn, recordHistory: false });
   assert.equal(result.mode, 'dry-run');
   assert.equal(result.ratioPct, 20);
-  assert.equal(result.maxFollows, 30);
+  assert.equal(result.maxFollows, 60);
   assert.equal(result.maxPages, 20);
   assert.equal(result.pagesRead, 1);
   assert.deepEqual(result.candidates.map(item => item.handle), ['a.bsky.social']);
