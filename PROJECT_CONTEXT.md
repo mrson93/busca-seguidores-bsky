@@ -25,9 +25,9 @@ interface é `index.html`.
 
 - É identificada pelos Secrets `BSKY_HANDLE` e `BSKY_APP_PASSWORD`.
 - O handle atual informado pelo proprietário é `canaltabarato.com.br`.
-- A rotina principal usa diferença máxima de **20%** entre seguidores e seguindo,
+- A rotina principal usa diferença máxima de **30%** entre seguidores e seguindo,
   configurada no workflow.
-- Há **3 dias de carência** antes de remover alguém que não segue de volta.
+- Há **10 dias de carência** antes de remover alguém que não segue de volta.
 - A limpeza de registros antigos está habilitada.
 - Perfis sem post ou repost detectável nos últimos **365 dias** entram na fila de
   unfollow, em lotes de até 100 perfis avaliados por execução.
@@ -38,11 +38,11 @@ interface é `index.html`.
   `SECONDARY_BSKY_APP_PASSWORD`.
 - A rotina só executa se os dois Secrets existirem; caso contrário, é ignorada
   sem interromper a conta principal.
-- O filtro de equilíbrio é de **20%**.
+- O filtro de equilíbrio é de **30%**.
 - Os termos atuais são: `filme`, `filmes`, `cinema`, `série`, `séries`,
   `seriado`, `seriados`.
 - A busca usa publicações em português e até 5 páginas por termo.
-- Há **3 dias de carência** antes de remover alguém que não segue de volta.
+- Há **10 dias de carência** antes de remover alguém que não segue de volta.
 - A limpeza de registros antigos (`stale_follow_record`) está habilitada.
 - O estado da segunda conta é separado em `.auto-follow-state-secondary.json`.
 - Se o cache desse estado não existir, a rotina da segunda conta é interrompida
@@ -78,8 +78,8 @@ Comportamento padrão do código:
 - consolida autores repetidos e ordena pelo post mais recente;
 - exclui a própria conta, perfis já seguidos, bloqueados e bloqueadores;
 - aceita apenas perfis dentro da proporção configurada entre seguidores e seguindo;
-- segue até 60 perfis por execução (padrão do código, usado pelas duas contas;
-  a trava máxima é 100);
+- segue até 100 perfis por execução (padrão do código, usado pelas duas contas;
+  também é a trava máxima);
 - espera aleatoriamente de 10 a 30 segundos entre follows;
 - verifica conteúdo adulto e sinais fortes de país antes de seguir;
 - se a verificação falhar, o perfil é rejeitado (fail closed);
@@ -91,14 +91,14 @@ Variáveis disponíveis:
 |---|---:|---|
 | `AUTO_FOLLOW_HANDLE` | primeira conta | escolhe uma conta local específica |
 | `AUTO_FOLLOW_WINDOW_MINUTES` | `60` | janela de busca |
-| `AUTO_FOLLOW_RATIO_PCT` | `20` | diferença máxima seguidores/seguindo |
-| `AUTO_FOLLOW_MAX_FOLLOWS` | `60` | limite de follows (máximo 100) |
+| `AUTO_FOLLOW_RATIO_PCT` | `30` | diferença máxima seguidores/seguindo |
+| `AUTO_FOLLOW_MAX_FOLLOWS` | `100` | limite de follows (máximo 100) |
 | `AUTO_FOLLOW_MAX_PAGES` | `20` | limite de páginas |
 | `AUTO_FOLLOW_SEARCH_TERMS` | vazio | termos separados por vírgula |
 | `AUTO_FOLLOW_STATE_FILE` | `.auto-follow-state.json` | arquivo de estado |
 
 O workflow principal e o workflow da segunda conta sobrescrevem
-`AUTO_FOLLOW_RATIO_PCT=20`.
+`AUTO_FOLLOW_RATIO_PCT=30`.
 
 Comandos locais:
 
@@ -130,7 +130,7 @@ Parâmetros usados no workflow principal:
 
 | Variável | Valor |
 |---|---:|
-| `AUTO_UNFOLLOW_GRACE_DAYS` | `3` |
+| `AUTO_UNFOLLOW_GRACE_DAYS` | `10` |
 | `AUTO_UNFOLLOW_CLEAN_STALE_RECORDS` | `true` |
 | `AUTO_UNFOLLOW_INACTIVITY_DAYS` | `365` |
 | `AUTO_UNFOLLOW_ACTIVITY_SCAN_LIMIT` | `100` |
@@ -223,7 +223,7 @@ as regras do X proíbem isso e a conta corre risco de suspensão. A página
 
 Regras aplicadas: descarta quem você já segue, conteúdo adulto e sinal de outro país
 lusófono, com as mesmas expressões de `profile-policy.mjs` (o teste compara as duas).
-A regra dos 20% entre seguidores e seguindo **não** é aplicada, porque o X não mostra
+A regra dos 30% entre seguidores e seguindo **não** é aplicada, porque o X não mostra
 esses números na lista; o usuário confere ao abrir o perfil.
 
 Clicar num perfil abre `x.com/usuario` numa nova aba e o marca como visto, para não

@@ -64,8 +64,8 @@ const now = new Date('2026-08-30T13:00:00Z');
   const api = mock();
   const result = await runAutomation({ account, now, fetchFn: api.fetchFn, recordHistory: false });
   assert.equal(result.mode, 'dry-run');
-  assert.equal(result.ratioPct, 20);
-  assert.equal(result.maxFollows, 60);
+  assert.equal(result.ratioPct, 30);
+  assert.equal(result.maxFollows, 100);
   assert.equal(result.maxPages, 20);
   assert.equal(result.pagesRead, 1);
   assert.deepEqual(result.candidates.map(item => item.handle), ['a.bsky.social']);
@@ -84,11 +84,11 @@ const now = new Date('2026-08-30T13:00:00Z');
     now,
     fetchFn: api.fetchFn,
     searchTerms: ['filme', 'série', 'filme'],
-    ratioPct: 30,
+    ratioPct: 40,
     recordHistory: false,
   });
   assert.deepEqual(result.searchTerms, ['filme', 'série']);
-  assert.equal(result.ratioPct, 30);
+  assert.equal(result.ratioPct, 40);
   assert.deepEqual(
     api.calls.filter(call => call.path === 'app.bsky.feed.searchPostsV2')
       .map(call => call.url.searchParams.get('query')),

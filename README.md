@@ -19,8 +19,8 @@ e deixar de seguir na própria lista, individualmente ou em massa.
 ## Follow automático periódico
 
 O `auto-follow.mjs` procura posts marcados como português nos últimos 60 minutos,
-mantém apenas perfis cujos seguidores estejam dentro de 20% da quantidade de contas
-que seguem e limita cada execução a 60 follows. A própria conta, perfis já seguidos e
+mantém apenas perfis cujos seguidores estejam dentro de 30% da quantidade de contas
+que seguem e limita cada execução a 100 follows. A própria conta, perfis já seguidos e
 perfis bloqueados ficam de fora. Entre cada follow há uma pausa aleatória de 10 a 30
 segundos para reduzir o risco de limite da API. A busca percorre as páginas até chegar
 ao início da janela de 60 minutos, com um teto de segurança de 20 páginas.
@@ -69,7 +69,7 @@ motivos continuam valendo imediatamente para quem segue de volta.
 
 A opção `AUTO_UNFOLLOW_CLEAN_STALE_RECORDS` também remove gradualmente registros antigos
 de contas apagadas, suspensas ou que já não aparecem como relação ativa no Bluesky. Na
-conta principal, a limpeza está habilitada, o filtro de equilíbrio está em 20% e há três
+conta principal, a limpeza está habilitada, o filtro de equilíbrio está em 30% e há dez
 dias de carência antes do unfollow por falta de reciprocidade.
 
 Também são revisados até 100 perfis por rodada; perfis sem post ou repost nos últimos
@@ -86,7 +86,7 @@ mantidos voltam a ser verificados após 30 dias. Esses limites podem ser ajustad
 O workflow também aceita uma segunda conta isolada por meio dos secrets
 `SECONDARY_BSKY_HANDLE` e `SECONDARY_BSKY_APP_PASSWORD`. Ela mantém estado próprio e,
 na configuração atual, procura publicações em português sobre filmes, cinema e séries,
-com diferença máxima de 20% entre seguidores e seguindo, e também respeita três dias
+com diferença máxima de 30% entre seguidores e seguindo, e também respeita dez dias
 de carência antes do unfollow por falta de reciprocidade e limpa registros antigos de
 follow, como a conta principal. Se esses secrets estiverem
 ausentes, a segunda rotina é ignorada sem afetar a conta principal.
@@ -111,7 +111,7 @@ agregadas; handles e DIDs processados não são publicados.
 canaltabarato, para você seguir **clicando no próprio X**. Busque um termo, copie a aba
 Pessoas do X (Cmd/Ctrl+A, Cmd/Ctrl+C), cole e clique em Filtrar. A página descarta quem
 você já segue, conteúdo adulto e perfis que não parecem brasileiros, e mostra os
-brasileiros primeiro. A regra dos 20% entre seguidores e seguindo fica para você conferir
+brasileiros primeiro. A regra dos 30% entre seguidores e seguindo fica para você conferir
 ao abrir o perfil, porque o X não mostra esses números na lista. Quem você abre não volta
 na próxima busca. A página não acessa o X nem pede senha ou token; abra o arquivo direto
 no navegador.
